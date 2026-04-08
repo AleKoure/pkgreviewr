@@ -296,3 +296,112 @@ test_that("render_review_section uses preview format without internal scaffoldin
   expect_false(grepl("Evidence used:", rendered, fixed = TRUE))
   expect_false(grepl("Warnings:", rendered, fixed = TRUE))
 })
+
+
+test_that("generate_review_section retries before succeeding", {
+  review_data <- pkgreviewr:::new_review_data(
+    package_ref = "https://example.com/pkg.git",
+    source_path = "/tmp/pkg",
+    signals = list(
+      package_code = c("f <- function() TRUE"),
+      coverage_report = "95%",
+      lint_report = "No lints",
+      rcmd_check_report = "0 errors, 0 warnings",
+      session_info = "R 4.4"
+    ),
+    metadata = list()
+  )
+
+  section_spec <- pkgreviewr:::get_review_section_specs()[[1]]
+  attempts <- 0L
+  chat_fn <- function(system_prompt, user_prompt) {
+    attempts <<- attempts + 1L
+
+    if (attempts == 1L) {
+      stop("transient backend failure")
+    }
+
+    paste(
+      "SUMMARY:",
+      "Recovered section summary.",
+      "BODY:",
+      "Recovered section body.",
+      sep = "
+"
+    )
+  }
+
+  section_result <- pkgreviewr:::generate_review_section(review_data, section_spec, chat_fn)
+
+  expect_identical(section_result$summary, "Recovered section summary.")
+  expect_identical(section_result$trace$status, "success")
+  expect_length(section_result$trace$attempts, 2L)
+  expect_identical(section_result$trace$attempts[[1]]$status, "backend_error")
+  expect_identical(section_result$trace$attempts[[2]]$status, "success")
+})
+
+test_that("render_review_report omits failed sections and shows one note", {
+  review_data <- pkgreviewr:::new_review_data(
+    package_ref = "https://example.com/pkg.git",
+    source_path = "/tmp/pkg",
+    signals = list(package_code = "code"),
+    metadata = list()
+  )
+
+  section_results <- list(
+    pkgreviewr:::new_section_result(
+      section_id = "overall_assessment",
+      title = "Overall Assessment",
+      body = "Overall body.",
+      summary = "Overall summary.",
+      evidence_used = c("strengths"),
+      warnings = character(),
+      trace = list(status = "success", attempts = list(), final_error = NULL)
+    ),
+    pkgreviewr:::new_section_result(
+      section_id = "strengths",
+      title = "✅ Strengths",
+      body = "1. Strong API design.",
+      summary = "Strong API design.",
+      evidence_used = c("package_code"),
+      warnings = character(),
+      trace = list(status = "success", attempts = list(), final_error = NULL)
+    ),
+    pkgreviewr:::new_section_result(
+      section_id = "improvements",
+      title = "⚠️ Improvements",
+      body = "This section could not be generated from the available diagnostics.",
+      summary = "Section unavailable: ⚠️ Improvements",
+      evidence_used = c("lint_report"),
+      warnings = "backend unavailable",
+      trace = list(status = "failed", attempts = list(list(attempt = 1L, status = "backend_error", error = "backend unavailable")), final_error = "backend unavailable")
+    )
+  )
+
+  rendered <- pkgreviewr:::render_review_report(review_data, section_results)
+
+  expect_match(rendered, "Note: Omitted sections due to generation failures: ⚠️ Improvements", fixed = TRUE)
+  expect_false(grepl("## ⚠️ Improvements", rendered, fixed = TRUE))
+  expect_match(rendered, "## ✅ Strengths", fixed = TRUE)
+})
+
+test_that("report_section_traces exposes failed section errors", {
+  report <- structure(
+    "report body",
+    class = c("pkgreviewr_report", "character"),
+    section_traces = list(
+      improvements = list(
+        section_id = "improvements",
+        title = "⚠️ Improvements",
+        status = "failed",
+        attempts = list(list(attempt = 1L, status = "backend_error", error = "backend unavailable")),
+        final_error = "backend unavailable"
+      )
+    )
+  )
+
+  trace <- pkgreviewr:::report_section_traces(report, "improvements")
+
+  expect_identical(trace$final_error, "backend unavailable")
+  expect_identical(trace$status, "failed")
+})

@@ -158,6 +158,33 @@ generate_package_review_report <- function(code,
   invisible(response)
 }
 
+
+# Retrieve attached section traces from a built report.
+#
+# @param report Report value returned by `build_report()`.
+# @param section_id Optional section identifier.
+#
+# @return A named list of traces, or a single section trace.
+# @keywords internal
+# @noRd
+report_section_traces <- function(report, section_id = NULL) {
+  traces <- attr(report, "section_traces", exact = TRUE)
+
+  if (is.null(traces)) {
+    stop("`report` does not contain attached section traces.", call. = FALSE)
+  }
+
+  if (is.null(section_id)) {
+    return(traces)
+  }
+
+  if (!section_id %in% names(traces)) {
+    stop(sprintf("No trace found for section '%s'.", section_id), call. = FALSE)
+  }
+
+  traces[[section_id]]
+}
+
 # Build a package review report.
 #
 # `build_report()` is the current end-user entry point. It collects package
@@ -190,9 +217,16 @@ build_report <- function(package_url,
     workers = workers
   )
   synthesis_result <- synthesize_review_diagnostics(section_results, chat_backend)
-  report <- render_review_report(review_data, c(list(synthesis_result), section_results))
+  all_results <- c(list(synthesis_result), section_results)
+  report <- render_review_report(review_data, all_results)
+  report <- structure(
+    report,
+    class = c("pkgreviewr_report", "character"),
+    section_results = all_results,
+    section_traces = collect_section_traces(all_results)
+  )
 
-  writeLines(report, output_path)
+  writeLines(as.character(report), output_path)
   message("Review report written to: ", output_path)
   invisible(report)
 }

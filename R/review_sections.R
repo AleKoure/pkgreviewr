@@ -226,56 +226,214 @@ parse_section_response <- function(response) {
   )
 }
 
+# Internal trace builder for section and synthesis generation.
+#
+# @param section_id Single section identifier.
+# @param title Single section title.
+# @param status Single trace status.
+# @param attempts List of attempt records.
+# @param final_error Optional final error string.
+#
+# @return A named trace list.
+# @keywords internal
+# @noRd
+new_section_trace <- function(section_id,
+                              title,
+                              status,
+                              attempts = list(),
+                              final_error = NULL) {
+  list(
+    section_id = section_id,
+    title = title,
+    status = status,
+    attempts = attempts,
+    final_error = final_error
+  )
+}
+
+# Internal chat runner with retries for section-shaped responses.
+#
+# @param chat_fn Chat backend with signature `(system_prompt, user_prompt)`.
+# @param system_prompt System prompt for the call.
+# @param user_prompt User prompt for the call.
+# @param max_attempts Maximum number of attempts.
+#
+# @return A list containing parsed response data and attempt traces.
+# @keywords internal
+# @noRd
+run_chat_attempts <- function(chat_fn,
+                              system_prompt,
+                              user_prompt,
+                              max_attempts = 3L) {
+  max_attempts <- max(1L, as.integer(max_attempts))
+  attempts <- vector("list", length = 0L)
+  parsed_response <- NULL
+  final_error <- NULL
+
+  for (attempt_index in seq_len(max_attempts)) {
+    response <- tryCatch(
+      chat_fn(system_prompt = system_prompt, user_prompt = user_prompt),
+      error = function(error) {
+        final_error <<- conditionMessage(error)
+        attempts[[length(attempts) + 1L]] <<- list(
+          attempt = attempt_index,
+          status = "backend_error",
+          error = final_error
+        )
+        NULL
+      }
+    )
+
+    if (is.null(response)) {
+      next
+    }
+
+    current_parsed <- parse_section_response(response)
+
+    if (is.null(current_parsed$parse_warning)) {
+      parsed_response <- current_parsed
+      attempts[[length(attempts) + 1L]] <- list(
+        attempt = attempt_index,
+        status = "success",
+        error = NULL
+      )
+      break
+    }
+
+    final_error <- current_parsed$parse_warning
+    attempts[[length(attempts) + 1L]] <- list(
+      attempt = attempt_index,
+      status = "parse_error",
+      error = final_error
+    )
+  }
+
+  list(
+    parsed_response = parsed_response,
+    attempts = attempts,
+    final_error = final_error
+  )
+}
+
+# Internal section success predicate.
+#
+# @param section_result A validated `section_result` object.
+#
+# @return `TRUE` when the section generated successfully.
+# @keywords internal
+# @noRd
+is_successful_section_result <- function(section_result) {
+  section_result <- validate_section_result(section_result)
+  is.null(section_result$trace$status) || identical(section_result$trace$status, "success")
+}
+
+# Internal trace collector for generated sections.
+#
+# @param section_results A list of validated `section_result` objects.
+#
+# @return A named list of trace records.
+# @keywords internal
+# @noRd
+collect_section_traces <- function(section_results) {
+  validated_results <- lapply(section_results, validate_section_result)
+  traces <- lapply(validated_results, function(section_result) section_result$trace)
+  names(traces) <- vapply(validated_results, function(section_result) section_result$section_id, character(1))
+  traces
+}
+
+# Internal omitted-section note builder.
+#
+# @param section_results A list of validated `section_result` objects.
+#
+# @return A single note string, or `""` when nothing was omitted.
+# @keywords internal
+# @noRd
+build_omitted_sections_note <- function(section_results) {
+  validated_results <- lapply(section_results, validate_section_result)
+  omitted_titles <- vapply(validated_results, function(section_result) {
+    if (!is_successful_section_result(section_result)) {
+      return(section_result$title)
+    }
+
+    NA_character_
+  }, character(1))
+  omitted_titles <- unique(stats::na.omit(omitted_titles))
+
+  if (length(omitted_titles) == 0L) {
+    return("")
+  }
+
+  paste(
+    "Note: Omitted sections due to generation failures:",
+    paste(omitted_titles, collapse = ", ")
+  )
+}
+
 # Internal single-section generator.
 #
 # @param review_data A validated `review_data` object.
 # @param section_spec A section specification.
 # @param chat_fn Chat backend with signature `(system_prompt, user_prompt)`.
+# @param max_attempts Maximum number of attempts for the section call.
 #
 # @return A validated `section_result` object.
 # @keywords internal
 # @noRd
-generate_review_section <- function(review_data, section_spec, chat_fn) {
+generate_review_section <- function(review_data,
+                                    section_spec,
+                                    chat_fn,
+                                    max_attempts = 3L) {
   section_context <- build_section_context(review_data, section_spec)
   user_prompt <- format_section_context(section_context)
   system_prompt <- build_section_system_prompt(section_context)
-  warnings <- character()
-
-  response <- tryCatch(
-    chat_fn(system_prompt = system_prompt, user_prompt = user_prompt),
-    error = function(error) {
-      warnings <<- c(
-        warnings,
-        sprintf("LLM backend failed for section '%s': %s", section_spec$section_id, conditionMessage(error))
-      )
-      NULL
-    }
+  chat_result <- run_chat_attempts(
+    chat_fn = chat_fn,
+    system_prompt = system_prompt,
+    user_prompt = user_prompt,
+    max_attempts = max_attempts
   )
 
-  if (is.null(response)) {
+  if (is.null(chat_result$parsed_response)) {
+    warning_messages <- unique(vapply(chat_result$attempts, function(attempt) {
+      if (is.null(attempt$error)) {
+        return(NA_character_)
+      }
+
+      attempt$error
+    }, character(1)))
+    warning_messages <- stats::na.omit(warning_messages)
+
     return(new_section_result(
       section_id = section_spec$section_id,
       title = section_spec$title,
       body = "This section could not be generated from the available diagnostics.",
       summary = paste("Section unavailable:", section_spec$title),
       evidence_used = section_context$evidence_used,
-      warnings = warnings
+      warnings = warning_messages,
+      trace = new_section_trace(
+        section_id = section_spec$section_id,
+        title = section_spec$title,
+        status = "failed",
+        attempts = chat_result$attempts,
+        final_error = chat_result$final_error
+      )
     ))
-  }
-
-  parsed_response <- parse_section_response(response)
-
-  if (!is.null(parsed_response$parse_warning)) {
-    warnings <- c(warnings, parsed_response$parse_warning)
   }
 
   new_section_result(
     section_id = section_spec$section_id,
     title = section_spec$title,
-    body = parsed_response$body,
-    summary = parsed_response$summary,
+    body = chat_result$parsed_response$body,
+    summary = chat_result$parsed_response$summary,
     evidence_used = section_context$evidence_used,
-    warnings = warnings
+    warnings = character(),
+    trace = new_section_trace(
+      section_id = section_spec$section_id,
+      title = section_spec$title,
+      status = "success",
+      attempts = chat_result$attempts,
+      final_error = NULL
+    )
   )
 }
 
@@ -292,7 +450,8 @@ generate_review_section <- function(review_data, section_spec, chat_fn) {
 generate_review_sections <- function(review_data,
                                      chat_fn,
                                      parallel = FALSE,
-                                     workers = 1L) {
+                                     workers = 1L,
+                                     max_attempts = 3L) {
   review_data <- validate_review_data(review_data)
   section_specs <- get_review_section_specs()
 
@@ -300,7 +459,8 @@ generate_review_sections <- function(review_data,
     generate_review_section(
       review_data = review_data,
       section_spec = section_spec,
-      chat_fn = chat_fn
+      chat_fn = chat_fn,
+      max_attempts = max_attempts
     )
   }
 
@@ -325,6 +485,10 @@ generate_review_sections <- function(review_data,
 render_review_section <- function(section_result) {
   section_result <- validate_section_result(section_result)
 
+  if (!is_successful_section_result(section_result)) {
+    return("")
+  }
+
   blocks <- c(
     paste("##", section_result$title),
     paste("> Preview:", section_result$summary),
@@ -343,7 +507,7 @@ render_review_section <- function(section_result) {
 # @keywords internal
 # @noRd
 build_synthesis_prompt <- function(section_results) {
-  validated_results <- lapply(section_results, validate_section_result)
+  validated_results <- Filter(is_successful_section_result, lapply(section_results, validate_section_result))
   summary_lines <- vapply(validated_results, function(section_result) {
     paste0(section_result$section_id, ": ", section_result$summary)
   }, character(1))
@@ -381,48 +545,75 @@ build_synthesis_prompt <- function(section_results) {
 # @return A validated `section_result` object.
 # @keywords internal
 # @noRd
-synthesize_review_diagnostics <- function(section_results, chat_fn) {
+synthesize_review_diagnostics <- function(section_results, chat_fn, max_attempts = 3L) {
   synthesis_prompt <- build_synthesis_prompt(section_results)
-  warnings <- character()
 
-  response <- tryCatch(
-    chat_fn(
-      system_prompt = synthesis_prompt$system_prompt,
-      user_prompt = synthesis_prompt$user_prompt
-    ),
-    error = function(error) {
-      warnings <<- c(
-        warnings,
-        sprintf("LLM backend failed for synthesis: %s", conditionMessage(error))
-      )
-      NULL
-    }
-  )
-
-  if (is.null(response)) {
+  if (length(synthesis_prompt$evidence_used) == 0L) {
     return(new_section_result(
       section_id = "overall_assessment",
       title = "Overall Assessment",
-      body = "Overall synthesis could not be generated. Review the section summaries directly.",
+      body = "Overall synthesis could not be generated because no sections completed successfully.",
       summary = "Overall assessment unavailable.",
-      evidence_used = synthesis_prompt$evidence_used,
-      warnings = warnings
+      evidence_used = character(),
+      warnings = "No successful sections were available for synthesis.",
+      trace = new_section_trace(
+        section_id = "overall_assessment",
+        title = "Overall Assessment",
+        status = "failed",
+        attempts = list(),
+        final_error = "No successful sections were available for synthesis."
+      )
     ))
   }
 
-  parsed_response <- parse_section_response(response)
+  chat_result <- run_chat_attempts(
+    chat_fn = chat_fn,
+    system_prompt = synthesis_prompt$system_prompt,
+    user_prompt = synthesis_prompt$user_prompt,
+    max_attempts = max_attempts
+  )
 
-  if (!is.null(parsed_response$parse_warning)) {
-    warnings <- c(warnings, parsed_response$parse_warning)
+  if (is.null(chat_result$parsed_response)) {
+    warning_messages <- unique(vapply(chat_result$attempts, function(attempt) {
+      if (is.null(attempt$error)) {
+        return(NA_character_)
+      }
+
+      attempt$error
+    }, character(1)))
+    warning_messages <- stats::na.omit(warning_messages)
+
+    return(new_section_result(
+      section_id = "overall_assessment",
+      title = "Overall Assessment",
+      body = "Overall synthesis could not be generated. Review the completed section summaries directly.",
+      summary = "Overall assessment unavailable.",
+      evidence_used = synthesis_prompt$evidence_used,
+      warnings = warning_messages,
+      trace = new_section_trace(
+        section_id = "overall_assessment",
+        title = "Overall Assessment",
+        status = "failed",
+        attempts = chat_result$attempts,
+        final_error = chat_result$final_error
+      )
+    ))
   }
 
   new_section_result(
     section_id = "overall_assessment",
     title = "Overall Assessment",
-    body = parsed_response$body,
-    summary = parsed_response$summary,
+    body = chat_result$parsed_response$body,
+    summary = chat_result$parsed_response$summary,
     evidence_used = synthesis_prompt$evidence_used,
-    warnings = warnings
+    warnings = character(),
+    trace = new_section_trace(
+      section_id = "overall_assessment",
+      title = "Overall Assessment",
+      status = "success",
+      attempts = chat_result$attempts,
+      final_error = NULL
+    )
   )
 }
 
@@ -447,14 +638,22 @@ render_review_report <- function(review_data, section_results) {
     paste("Reviewed source:", review_data$package_ref)
   )
 
+  omitted_note <- build_omitted_sections_note(validated_results)
+
+  if (nzchar(omitted_note)) {
+    top_blocks <- c(top_blocks, omitted_note)
+  }
+
   if (length(synthesis_index) > 0) {
     synthesis_result <- validated_results[[synthesis_index[[1]]]]
 
-    top_blocks <- c(
-      top_blocks,
-      paste("> Preview:", synthesis_result$summary),
-      synthesis_result$body
-    )
+    if (is_successful_section_result(synthesis_result)) {
+      top_blocks <- c(
+        top_blocks,
+        paste("> Preview:", synthesis_result$summary),
+        synthesis_result$body
+      )
+    }
 
     validated_results <- validated_results[-synthesis_index[[1]]]
   }

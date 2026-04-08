@@ -10,6 +10,7 @@
 # @param summary Single concise section summary.
 # @param evidence_used Character vector of evidence identifiers used.
 # @param warnings Character vector of section warnings.
+# @param trace Named list containing section generation trace metadata.
 #
 # @return A validated `pkgreviewr_section_result` object.
 # @keywords internal
@@ -19,14 +20,16 @@ new_section_result <- function(section_id,
                                body,
                                summary,
                                evidence_used = character(),
-                               warnings = character()) {
+                               warnings = character(),
+                               trace = list(status = "success", attempts = list(), final_error = NULL)) {
   section_result <- list(
     section_id = section_id,
     title = title,
     body = body,
     summary = summary,
     evidence_used = evidence_used,
-    warnings = warnings
+    warnings = warnings,
+    trace = trace
   )
 
   class(section_result) <- c("pkgreviewr_section_result", "list")
@@ -51,7 +54,8 @@ validate_section_result <- function(section_result) {
     "body",
     "summary",
     "evidence_used",
-    "warnings"
+    "warnings",
+    "trace"
   )
   missing_fields <- setdiff(required_fields, names(section_result))
 
@@ -89,6 +93,10 @@ validate_section_result <- function(section_result) {
         call. = FALSE
       )
     }
+  }
+
+  if (!is.list(section_result$trace)) {
+    stop("`section_result$trace` must be a list.", call. = FALSE)
   }
 
   section_result
