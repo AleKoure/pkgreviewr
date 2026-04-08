@@ -12,6 +12,7 @@ LazyData: true
 Imports: 
     covr,
     ellmer,
+    git2r,
     lintr,
     rdocdump
 Suggests: 

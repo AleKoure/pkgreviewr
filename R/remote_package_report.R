@@ -1,33 +1,28 @@
 remote_package_report <- function(package_url) {
+  review_data <- collect_review_data(package_url)
+  format_review_data(review_data)
+}
+
+collect_review_data <- function(package_url) {
   local_path <- withr::local_tempdir()
   git2r::clone(package_url, local_path = local_path)
   rcmd_check <- get_rcmd_check(local_path)
 
-  report <- list()
-  report$package_code <- rdocdump::rdd_extract_code(
-    local_path,
-    include_roxygen = TRUE,
-    include_tests = TRUE,
-    force_fetch = FALSE,
-    repos = c("CRAN" = "https://cran.r-project.org")
+  build_review_data(
+    package_ref = package_url,
+    source_path = local_path,
+    package_code = rdocdump::rdd_extract_code(
+      local_path,
+      include_roxygen = TRUE,
+      include_tests = TRUE,
+      force_fetch = FALSE,
+      repos = c("CRAN" = "https://cran.r-project.org")
+    ),
+    coverage_report = get_coverage_report(local_path),
+    lint_report = get_lint_report(local_path),
+    rcmd_check_report = rcmd_check$stdout,
+    session_info = as.character(rcmd_check$session_info)
   )
-
-  report$coverage_report <- get_coverage_report(local_path)
-  report$lint_report <- get_lint_report(local_path)
-  report$rcmd_check_report <- rcmd_check$stdout
-  report$session_info <- rcmd_check$session_info |> as.character()
-
-  purrr::imap(report, function(report_content, report_name) {
-    glue::glue("
-      -------------------------
-      -------------------------
-      {report_name}
-      -------------------------
-      -------------------------
-      {paste(report_content, collapse = '\n')}
-    ")
-  }) |>
-    paste(collapse = "\n")
 }
 
 get_coverage_report <- function(path_to_package) {
