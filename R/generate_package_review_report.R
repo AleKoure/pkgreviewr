@@ -1,5 +1,5 @@
 generate_package_review_report <- function(code, path_to_report) {
-  path_to_promt <- system.file(package = "qareporter", "package_review_prompt.md")
+  path_to_promt <- system.file(package = "pkgreviewr", "package_review_prompt.md")
   package_review_prompt <- readLines(path_to_promt) |> paste(collapse = "\n")
 
   chat <- ellmer::chat_google_gemini(

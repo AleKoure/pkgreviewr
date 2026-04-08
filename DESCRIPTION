@@ -1,4 +1,4 @@
-Package: qareporter
+Package: pkgreviewr
 Type: Package
 Title: What the Package Does (Title Case)
 Version: 0.1.0
@@ -17,3 +17,4 @@ Imports:
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+RoxygenNote: 7.3.3

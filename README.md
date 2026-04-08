@@ -1,7 +1,7 @@
 
-# qareporter
+# pkgreviewr
 
-The goal of qareporter is to generate QA report using LLMs.
+The goal of pkgreviewr is to generate QA report using LLMs.
 
 In this initial draft phase, it gathers data using:
 
@@ -22,16 +22,16 @@ and performs an API call with `ellmer` and this [prompt](./inst/package_review_p
 GEMINI_API_KEY={YOUR_API_KEY}
 ```
 
-3. Install `qareporter` package:
+3. Install `pkgreviewr` package:
 
 ```
-pak::pak("AleKoure/qareporter")
+pak::pak("AleKoure/pkgreviewr")
 ```
 
 4. This is a basic example that generates a report for the `ini` package
 
 ``` r
-library(qareporter)
+library(pkgreviewr)
 build_report("https://github.com/dvdscripter/ini")
 ```
 
