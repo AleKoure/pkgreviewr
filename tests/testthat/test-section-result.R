@@ -20,7 +20,8 @@ test_that("validate_section_result requires a non-empty summary", {
     body = "Detailed section body.",
     summary = "",
     evidence_used = character(),
-    warnings = character()
+    warnings = character(),
+    trace = list(status = "success", attempts = list(), final_error = NULL)
   )
   class(section_result) <- c("pkgreviewr_section_result", "list")
 
@@ -38,7 +39,8 @@ test_that("validate_section_result requires character evidence and warnings", {
     body = "Detailed section body.",
     summary = "Short summary.",
     evidence_used = list("description"),
-    warnings = character()
+    warnings = character(),
+    trace = list(status = "success", attempts = list(), final_error = NULL)
   )
   class(section_result) <- c("pkgreviewr_section_result", "list")
 

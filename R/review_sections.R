@@ -12,8 +12,11 @@ get_review_section_specs <- function() {
         "Identify the package's clearest strengths in structure, design,",
         "documentation, testing, and usability. Prefer concrete positives over vague praise."
       ),
-      signal_names = c("package_code", "rcmd_check_report", "lint_report", "coverage_report"),
-      max_chars = 10000L
+      evidence_specs = list(
+        list(id = "package_code", label = "Package Code", max_chars = 9000L),
+        list(id = "rcmd_check_report", label = "R CMD Check", max_chars = 2500L),
+        list(id = "coverage_report", label = "Code Coverage", max_chars = 1500L)
+      )
     ),
     improvements = list(
       section_id = "improvements",
@@ -22,8 +25,12 @@ get_review_section_specs <- function() {
         "List the most important quality gaps and missing pieces.",
         "Emphasize concrete improvements based on the package review guides."
       ),
-      signal_names = c("rcmd_check_report", "lint_report", "coverage_report", "package_code"),
-      max_chars = 10000L
+      evidence_specs = list(
+        list(id = "rcmd_check_report", label = "R CMD Check", max_chars = 3500L),
+        list(id = "lint_report", label = "Lint Summary", max_chars = 2500L),
+        list(id = "coverage_report", label = "Code Coverage", max_chars = 1500L),
+        list(id = "package_code", label = "Relevant Package Code", max_chars = 5000L)
+      )
     ),
     refactor_suggestions = list(
       section_id = "refactor_suggestions",
@@ -32,8 +39,11 @@ get_review_section_specs <- function() {
         "Suggest practical refactors or cleanup steps that would improve maintainability,",
         "clarity, and package design without overengineering the solution."
       ),
-      signal_names = c("package_code", "lint_report", "rcmd_check_report"),
-      max_chars = 10000L
+      evidence_specs = list(
+        list(id = "package_code", label = "Package Code", max_chars = 7000L),
+        list(id = "lint_report", label = "Lint Summary", max_chars = 2000L),
+        list(id = "rcmd_check_report", label = "R CMD Check", max_chars = 2000L)
+      )
     ),
     red_flags = list(
       section_id = "red_flags",
@@ -42,8 +52,12 @@ get_review_section_specs <- function() {
         "Identify blockers, correctness risks, release risks, or serious weaknesses.",
         "If there are no major blockers, say so explicitly."
       ),
-      signal_names = c("rcmd_check_report", "lint_report", "coverage_report", "package_code"),
-      max_chars = 10000L
+      evidence_specs = list(
+        list(id = "rcmd_check_report", label = "R CMD Check", max_chars = 3500L),
+        list(id = "lint_report", label = "Lint Summary", max_chars = 2000L),
+        list(id = "coverage_report", label = "Code Coverage", max_chars = 1500L),
+        list(id = "package_code", label = "Relevant Package Code", max_chars = 4000L)
+      )
     ),
     technical_details = list(
       section_id = "technical_details",
@@ -52,8 +66,12 @@ get_review_section_specs <- function() {
         "Summarize technical diagnostics from session info, lints, R CMD check,",
         "and code coverage using careful markdown list formatting."
       ),
-      signal_names = c("session_info", "lint_report", "rcmd_check_report", "coverage_report"),
-      max_chars = 12000L
+      evidence_specs = list(
+        list(id = "session_info", label = "Session Info", max_chars = 2500L),
+        list(id = "lint_report", label = "Lint Summary", max_chars = 2500L),
+        list(id = "rcmd_check_report", label = "R CMD Check", max_chars = 3500L),
+        list(id = "coverage_report", label = "Code Coverage", max_chars = 2000L)
+      )
     )
   )
 }
@@ -87,31 +105,36 @@ truncate_text <- function(text, max_chars) {
 build_section_context <- function(review_data, section_spec) {
   review_data <- validate_review_data(review_data)
 
-  evidence <- list()
+  evidence_blocks <- list()
   evidence_used <- character()
 
-  for (signal_name in section_spec$signal_names) {
-    signal_value <- review_data$signals[[signal_name]]
+  for (evidence_spec in section_spec$evidence_specs) {
+    signal_value <- review_data$signals[[evidence_spec$id]]
 
     if (is.null(signal_value)) {
       next
     }
 
-    rendered_signal <- truncate_text(signal_value, max_chars = section_spec$max_chars)
+    rendered_signal <- truncate_text(signal_value, max_chars = evidence_spec$max_chars)
 
     if (!nzchar(rendered_signal)) {
       next
     }
 
-    evidence[[signal_name]] <- rendered_signal
-    evidence_used <- c(evidence_used, signal_name)
+    evidence_blocks[[evidence_spec$id]] <- paste(
+      "##",
+      evidence_spec$label,
+      rendered_signal,
+      sep = "\n"
+    )
+    evidence_used <- c(evidence_used, evidence_spec$id)
   }
 
-  list(
+  new_section_context(
     section_id = section_spec$section_id,
     title = section_spec$title,
     focus = section_spec$focus,
-    evidence = evidence,
+    evidence_blocks = evidence_blocks,
     evidence_used = evidence_used
   )
 }
@@ -124,14 +147,8 @@ build_section_context <- function(review_data, section_spec) {
 # @keywords internal
 # @noRd
 format_section_context <- function(section_context) {
-  evidence_blocks <- vapply(names(section_context$evidence), function(signal_name) {
-    paste(
-      "##",
-      signal_name,
-      section_context$evidence[[signal_name]],
-      sep = "\n"
-    )
-  }, character(1))
+  section_context <- validate_section_context(section_context)
+  evidence_blocks <- unlist(section_context$evidence_blocks, use.names = FALSE)
 
   paste(
     paste("Section ID:", section_context$section_id),
