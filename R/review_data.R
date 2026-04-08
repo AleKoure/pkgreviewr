@@ -1,3 +1,17 @@
+# Internal constructor for collected review data.
+#
+# A `review_data` object carries deterministic signals gathered from a package
+# review run. It is an internal contract used to separate collection from later
+# rendering and section generation.
+#
+# @param package_ref Single package or repository reference.
+# @param source_path Single path to the acquired source tree.
+# @param signals Named list of collected review signals.
+# @param metadata List of auxiliary metadata.
+#
+# @return A validated `pkgreviewr_review_data` object.
+# @keywords internal
+# @noRd
 new_review_data <- function(package_ref,
                             source_path,
                             signals,
@@ -13,6 +27,13 @@ new_review_data <- function(package_ref,
   validate_review_data(review_data)
 }
 
+# Internal validator for `review_data` objects.
+#
+# @param review_data Object to validate.
+#
+# @return The validated `review_data` object.
+# @keywords internal
+# @noRd
 validate_review_data <- function(review_data) {
   if (!inherits(review_data, "pkgreviewr_review_data")) {
     stop("`review_data` must inherit from 'pkgreviewr_review_data'.", call. = FALSE)
@@ -50,6 +71,19 @@ validate_review_data <- function(review_data) {
   review_data
 }
 
+# Internal builder for `review_data` objects.
+#
+# @param package_ref Single package or repository reference.
+# @param source_path Single path to the acquired source tree.
+# @param package_code Extracted package code.
+# @param coverage_report Coverage output.
+# @param lint_report Lint output.
+# @param rcmd_check_report `R CMD check` output.
+# @param session_info Session information from the check step.
+#
+# @return A validated `pkgreviewr_review_data` object.
+# @keywords internal
+# @noRd
 build_review_data <- function(package_ref,
                               source_path,
                               package_code,
@@ -77,6 +111,13 @@ build_review_data <- function(package_ref,
   )
 }
 
+# Internal formatter for legacy single-prompt report generation.
+#
+# @param review_data A validated `review_data` object.
+#
+# @return A single character string containing all collected signals.
+# @keywords internal
+# @noRd
 format_review_data <- function(review_data) {
   review_data <- validate_review_data(review_data)
 

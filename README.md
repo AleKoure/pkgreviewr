@@ -1,38 +1,53 @@
-
 # pkgreviewr
 
-The goal of pkgreviewr is to generate QA report using LLMs.
+`pkgreviewr` reviews R packages by collecting deterministic QA signals and using
+an LLM to draft a package review report.
 
-In this initial draft phase, it gathers data using:
+The current implementation does this in two stages:
 
-- `devtools::check()`
-- `lintr::lint_package()`
-- `covr::package_coverage()`
-- Dump package to a single file
+- `collect_review_data()` acquires a repository and gathers local review
+  signals.
+- `build_report()` formats those signals into the current prompt workflow and
+  writes the generated report to disk.
 
-and performs an API call with `ellmer` and this [prompt](./inst/package_review_prompt.md)
+Collected signals currently include:
 
-## How to use
+- `devtools::check()` output
+- `lintr::lint_package()` output
+- `covr::package_coverage()` output
+- package source extracted with `rdocdump`
 
-1. Get Gemini API key: https://aistudio.google.com/app/api-keys
+The package is being refactored toward a section-based review architecture.
+Today, `build_report()` remains the stable end-to-end entry point, while lower
+level helpers stay internal.
 
-2. Add Gemini API key as the environmental variable (e.g., `usethis::edit_r_environ()`) and restart R:
+## Installation
 
-```
-GEMINI_API_KEY={YOUR_API_KEY}
-```
-
-3. Install `pkgreviewr` package:
-
-```
+```r
 pak::pak("AleKoure/pkgreviewr")
 ```
 
-4. This is a basic example that generates a report for the `ini` package
+## Usage
 
-``` r
+Set a Gemini API key in your environment, for example via
+`usethis::edit_r_environ()`, then restart R:
+
+```sh
+GEMINI_API_KEY={YOUR_API_KEY}
+```
+
+Generate a report for a repository:
+
+```r
 library(pkgreviewr)
 build_report("https://github.com/dvdscripter/ini")
+```
+
+Collect structured review data without generating a report:
+
+```r
+library(pkgreviewr)
+review_data <- collect_review_data("https://github.com/dvdscripter/ini")
 ```
 
 - [Example report generated for `ini`](./test_review.md)
