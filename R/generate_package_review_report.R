@@ -159,6 +159,65 @@ generate_package_review_report <- function(code,
 }
 
 
+# Internal final-refinement prompt builder.
+#
+# @return A single system prompt for final report refinement.
+# @keywords internal
+# @noRd
+build_final_refinement_prompt <- function() {
+  paste(
+    "You are refining a draft R package audit report.",
+    "Use the package review guide below as the governing style and criteria.",
+    paste(readLines(get_package_review_prompt_path()), collapse = "
+"),
+    "Treat the section content as fixed evidence-backed draft material and improve only wording, structure, and formatting.",
+    "Preserve the report's facts, section meanings, and omissions.",
+    "The final report must remain aligned with open-source review expectations reflected in Mozilla, rOpenSci, tidyverse, and r-pkgs guidance.",
+    "Beautify the report in the gluing layer, not by inventing new diagnostics.",
+    "Keep the final report tidy, concise, and aligned with this format:",
+    "# Audit report - <package>",
+    "Reviewed source: <source>",
+    "Optional single-line omission note when sections were skipped.",
+    "> Preview: <overall assessment preview>",
+    "<overall assessment body>",
+    "## ✅ Strengths",
+    "## ⚠️ Improvements",
+    "## 🔧 Suggestions",
+    "## 🚫 Red Flags",
+    "## Technical Details",
+    "Preserve existing section order when present and do not add new sections.",
+    "Do not invent evidence, add policy commentary, or mention hidden processing steps.",
+    "Return only the final markdown report.",
+    sep = "
+
+"
+  )
+}
+
+# Internal final-refinement runner for assembled reports.
+#
+# @param report Draft markdown report.
+# @param chat_fn Chat backend with signature `(system_prompt, user_prompt)`.
+#
+# @return A refined markdown report, or the draft report on failure.
+# @keywords internal
+# @noRd
+refine_review_report <- function(report, chat_fn) {
+  refined_report <- tryCatch(
+    chat_fn(
+      system_prompt = build_final_refinement_prompt(),
+      user_prompt = report
+    ),
+    error = function(error) NULL
+  )
+
+  if (is.null(refined_report) || !is.character(refined_report) || length(refined_report) != 1 || !nzchar(refined_report)) {
+    return(report)
+  }
+
+  refined_report
+}
+
 # Retrieve attached section traces from a built report.
 #
 # @param report Report value returned by `build_report()`.
@@ -218,10 +277,12 @@ build_report <- function(package_url,
   )
   synthesis_result <- synthesize_review_diagnostics(section_results, chat_backend)
   all_results <- c(list(synthesis_result), section_results)
-  report <- render_review_report(review_data, all_results)
+  draft_report <- render_review_report(review_data, all_results)
+  report <- refine_review_report(draft_report, chat_backend)
   report <- structure(
     report,
     class = c("pkgreviewr_report", "character"),
+    draft_report = draft_report,
     section_results = all_results,
     section_traces = collect_section_traces(all_results)
   )

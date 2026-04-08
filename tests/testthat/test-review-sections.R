@@ -265,18 +265,22 @@ test_that("render_review_report places synthesis as top preview", {
 })
 
 
-test_that("build_section_system_prompt includes review guide context", {
-  section_context <- list(
+test_that("build_section_system_prompt includes review guide context and section template", {
+  section_context <- pkgreviewr:::new_section_context(
     section_id = "strengths",
     title = "✅ Strengths",
     focus = "Focus text.",
-    evidence = list(package_code = "f <- function() TRUE"),
+    evidence_blocks = list(package_code = "## Package Code\nf <- function() TRUE"),
     evidence_used = c("package_code")
   )
+  section_spec <- pkgreviewr:::get_review_section_specs()$strengths
 
-  system_prompt <- pkgreviewr:::build_section_system_prompt(section_context)
+  system_prompt <- pkgreviewr:::build_section_system_prompt(section_context, section_spec)
 
   expect_match(system_prompt, "AI Review Prompt for R Packages", fixed = TRUE)
+  expect_match(system_prompt, "Section directive: ✅ Strengths", fixed = TRUE)
+  expect_match(system_prompt, "Mozilla review principles", fixed = TRUE)
+  expect_match(system_prompt, "rOpenSci package expectations", fixed = TRUE)
   expect_match(system_prompt, "Focus only on the section named: ✅ Strengths", fixed = TRUE)
 })
 

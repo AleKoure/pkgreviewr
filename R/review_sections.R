@@ -16,7 +16,8 @@ get_review_section_specs <- function() {
         list(id = "package_code", label = "Package Code", max_chars = 9000L),
         list(id = "rcmd_check_report", label = "R CMD Check", max_chars = 2500L),
         list(id = "coverage_report", label = "Code Coverage", max_chars = 1500L)
-      )
+      ),
+      template_name = "strengths.md"
     ),
     improvements = list(
       section_id = "improvements",
@@ -30,7 +31,8 @@ get_review_section_specs <- function() {
         list(id = "lint_report", label = "Lint Summary", max_chars = 2500L),
         list(id = "coverage_report", label = "Code Coverage", max_chars = 1500L),
         list(id = "package_code", label = "Relevant Package Code", max_chars = 5000L)
-      )
+      ),
+      template_name = "improvements.md"
     ),
     refactor_suggestions = list(
       section_id = "refactor_suggestions",
@@ -43,7 +45,8 @@ get_review_section_specs <- function() {
         list(id = "package_code", label = "Package Code", max_chars = 7000L),
         list(id = "lint_report", label = "Lint Summary", max_chars = 2000L),
         list(id = "rcmd_check_report", label = "R CMD Check", max_chars = 2000L)
-      )
+      ),
+      template_name = "refactor_suggestions.md"
     ),
     red_flags = list(
       section_id = "red_flags",
@@ -57,7 +60,8 @@ get_review_section_specs <- function() {
         list(id = "lint_report", label = "Lint Summary", max_chars = 2000L),
         list(id = "coverage_report", label = "Code Coverage", max_chars = 1500L),
         list(id = "package_code", label = "Relevant Package Code", max_chars = 4000L)
-      )
+      ),
+      template_name = "red_flags.md"
     ),
     technical_details = list(
       section_id = "technical_details",
@@ -71,7 +75,8 @@ get_review_section_specs <- function() {
         list(id = "lint_report", label = "Lint Summary", max_chars = 2500L),
         list(id = "rcmd_check_report", label = "R CMD Check", max_chars = 3500L),
         list(id = "coverage_report", label = "Code Coverage", max_chars = 2000L)
-      )
+      ),
+      template_name = "technical_details.md"
     )
   )
 }
@@ -174,6 +179,44 @@ read_review_guide_prompt <- function() {
   paste(readLines(prompt_path), collapse = "\n")
 }
 
+# Internal section prompt template path resolver.
+#
+# @param template_name Template filename under `inst/section_prompts`.
+#
+# @return Path to the section prompt template.
+# @keywords internal
+# @noRd
+get_section_prompt_template_path <- function(template_name) {
+  installed_path <- system.file(file.path("section_prompts", template_name), package = "pkgreviewr")
+
+  if (nzchar(installed_path)) {
+    return(installed_path)
+  }
+
+  source_path <- file.path("inst", "section_prompts", template_name)
+
+  if (file.exists(source_path)) {
+    return(source_path)
+  }
+
+  stop(sprintf("Could not find section prompt template '%s'.", template_name), call. = FALSE)
+}
+
+# Internal section prompt template reader.
+#
+# @param section_spec Section specification containing `template_name`.
+#
+# @return A single template string.
+# @keywords internal
+# @noRd
+read_section_prompt_template <- function(section_spec) {
+  if (is.null(section_spec$template_name) || !nzchar(section_spec$template_name)) {
+    stop("`section_spec$template_name` must be a single non-empty string.", call. = FALSE)
+  }
+
+  paste(readLines(get_section_prompt_template_path(section_spec$template_name)), collapse = "\n")
+}
+
 # Internal section prompt builder.
 #
 # @param section_context A section-context list.
@@ -181,12 +224,17 @@ read_review_guide_prompt <- function() {
 # @return A system prompt for the section.
 # @keywords internal
 # @noRd
-build_section_system_prompt <- function(section_context) {
+build_section_system_prompt <- function(section_context, section_spec) {
+  section_context <- validate_section_context(section_context)
+  template_text <- read_section_prompt_template(section_spec)
+
   paste(
     "You are reviewing an R package using the package review guide below.",
     "Anchor your judgment in the Mozilla, rOpenSci, tidyverse, and r-pkgs principles described there.",
     "Preserve the guide's structure, priorities, and tone.",
     read_review_guide_prompt(),
+    "Apply the following section-specific instructions.",
+    template_text,
     "Generate only the requested section.",
     "Keep the output tight, concrete, and stylistically close to the guide's example report.",
     "Do not repeat the section heading inside the body.",
@@ -199,7 +247,9 @@ build_section_system_prompt <- function(section_context) {
     "<markdown body for the section only>",
     "The summary must be concise and suitable for a preview and later synthesis.",
     paste("Focus only on the section named:", section_context$title),
-    sep = "\n\n"
+    sep = "
+
+"
   )
 }
 
@@ -402,7 +452,7 @@ generate_review_section <- function(review_data,
                                     max_attempts = 3L) {
   section_context <- build_section_context(review_data, section_spec)
   user_prompt <- format_section_context(section_context)
-  system_prompt <- build_section_system_prompt(section_context)
+  system_prompt <- build_section_system_prompt(section_context, section_spec)
   chat_result <- run_chat_attempts(
     chat_fn = chat_fn,
     system_prompt = system_prompt,

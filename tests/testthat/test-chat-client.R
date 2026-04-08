@@ -99,3 +99,31 @@ test_that("generate_package_review_report uses a supplied chat object", {
   expect_match(response, "input payload", fixed = TRUE)
   expect_identical(paste(readLines(path), collapse = "\n"), response)
 })
+
+
+test_that("refine_review_report uses the package review prompt and returns refined output", {
+  refined <- pkgreviewr:::refine_review_report(
+    report = "# Audit report - pkg\n\n## ✅ Strengths\n1. Strong API.",
+    chat_fn = function(system_prompt, user_prompt) {
+      expect_match(system_prompt, "AI Review Prompt for R Packages", fixed = TRUE)
+      expect_match(system_prompt, "Return only the final markdown report.", fixed = TRUE)
+      expect_match(system_prompt, "## ✅ Strengths", fixed = TRUE)
+      expect_match(system_prompt, "Beautify the report in the gluing layer", fixed = TRUE)
+      expect_match(user_prompt, "# Audit report - pkg", fixed = TRUE)
+      "# Audit report - pkg\n\n## ✅ Strengths\n1. Refined strength."
+    }
+  )
+
+  expect_match(refined, "Refined strength.", fixed = TRUE)
+})
+
+test_that("refine_review_report falls back to the draft report on backend failure", {
+  draft_report <- "# Audit report - pkg\n\n## ✅ Strengths\n1. Strong API."
+
+  refined <- pkgreviewr:::refine_review_report(
+    report = draft_report,
+    chat_fn = function(system_prompt, user_prompt) stop("refinement backend unavailable")
+  )
+
+  expect_identical(refined, draft_report)
+})
