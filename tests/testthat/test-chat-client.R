@@ -97,5 +97,5 @@ test_that("generate_package_review_report uses a supplied chat object", {
   )
 
   expect_match(response, "input payload", fixed = TRUE)
-  expect_identical(readLines(path), response)
+  expect_identical(paste(readLines(path), collapse = "\n"), response)
 })
