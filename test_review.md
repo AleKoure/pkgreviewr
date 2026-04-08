@@ -1,77 +1,65 @@
 # Audit report - ini
 
 ## ✅ Strengths
-1.  **Excellent Code Coverage**: The R code (`R/ini.R`) boasts a very high test coverage of 97.73%, indicating thorough testing of the core functionality.
-2.  **Clear API Design**: The `read.ini` and `write.ini` functions provide a symmetric and intuitive interface for handling INI files, using standard R list structures.
-3.  **Comprehensive Examples**: Both functions include clear and runnable examples within their roxygen documentation, demonstrating basic usage effectively.
-4.  **Robust Comment Handling**: `read.ini` correctly identifies and ignores lines starting with `#` or `;`, adhering to common INI file conventions.
-5.  **Handling of `encoding`**: The functions correctly expose an `encoding` parameter, allowing users to handle different file encodings.
+1. **High test coverage** – 97.73 % line coverage indicates that the core functionality is well‑tested.  
+2. **Clear documentation** – Both `read.ini()` and `write.ini()` have comprehensive roxygen2 blocks with `@examples`, `@seealso`, and `@export`.  
+3. **Functional correctness** – The package loads, installs, and passes all `R CMD check` tests without errors or warnings.  
+4. **Simple, self‑contained implementation** – No external dependencies; the parser works purely with base R, making the package lightweight and easy to distribute.  
 
 ## ⚠️ Improvements
-1.  **Code Style Consistency**: The package deviates significantly from tidyverse style guidelines.
-    *   **Naming Conventions**: Functions (`read.ini`, `write.ini`) and many internal variables (`equalPosition`, `sectionREGEXP`, `keyValueREGEXP`, `ignoreREGEXP`, `lastSection`, `iniFile`, `newini`) use camelCase or inconsistent capitalization instead of the recommended snake_case.
-    *   **Quotes**: Single quotes are used extensively where double quotes are preferred (e.g., `'r'`, `'w'`, regular expressions, list names in tests).
-    *   **Spacing**: Numerous lints indicate inconsistent spacing around parentheses, square brackets, and infix operators.
-    *   **Assignment Operator**: The `=` operator is occasionally used for assignment instead of `<-`.
-    *   **Boolean Literals**: `F` is used instead of `FALSE`.
-    *   **Line Length**: Several lines exceed the recommended 80-character limit, particularly in key/value extraction logic and test assertions.
-2.  **Internal Helper Functions**:
-    *   The `index` internal function within `read.ini` is a manual, character-by-character search. This is inefficient and prone to errors compared to built-in R string functions or `stringr` equivalents.
-    *   The `trim` internal function could be replaced by the standard `base::trimws()` function available in modern R versions.
-3.  **Documentation Detail**: While examples are good, the `@details` sections for `read.ini` and `write.ini` are somewhat brief. More information could be provided on supported INI file features (e.g., handling of duplicate keys, nested sections).
-4.  **Error Handling**: The package relies on R's default error messages for file operations (e.g., file not found). Providing more user-friendly, specific error messages could improve usability.
-5.  **R CMD check NOTEs**:
-    *   The presence of `.travis.yml` suggests continuous integration configuration that might not be necessary or should be properly ignored via `.Rbuildignore` if not in use.
-    *   The "future file timestamps" note is often transient but worth noting.
+1. **Naming style** – Functions and internal variables use camelCase (`read.ini`, `write.ini`, `sectionREGEXP`, `index`, `lastSection`, etc.). The tidyverse style guide recommends snake_case for objects and functions (e.g., `read_ini()`, `write_ini()`, `section_regexp`).  
+2. **Assignment operators** – Several places use `=` for assignment (`equalPosition = numeric(1)`, `con <- file(..., open = 'r', ...)`, etc.). Prefer `<-` for assignment (except within function calls).  
+3. **Whitespace & spacing** – Numerous lint warnings about missing spaces after/before parentheses, square brackets, and around infix operators. Adjusting spacing will bring the code into line with the `lintr` defaults.  
+4. **Quotes** – Single quotes are used in many places (e.g., `ignoreREGEXP <- '^\\s*[;#]'`). The style guide recommends double quotes for string literals in R.  
+5. **Line length** – Several lines exceed 80 characters (the `line_length_linter` flag). Breaking long lines improves readability, especially in printed documentation or narrow editors.  
+6. **Logical constants** – Use `FALSE`/`TRUE` instead of the symbols `F`/`T` (seen in `warn = F`).  
+7. **Explicit `return()`** – The helper `index()` function ends with `return(equalPosition)`. Implicit return (just the last expression) is preferred in R.  
+8. **Hidden file** – `.travis.yml` is packaged inadvertently; it should be added to `.Rbuildignore` (or removed) to avoid the NOTE about hidden files.  
 
-## 🔧 Refactor Suggestions
-1.  **Simplify `read.ini` String Parsing**:
-    *   Replace the custom `index` function with `base::gregexpr` or `stringr::str_locate` for more efficient and robust character position finding.
-    *   Refactor the key and value extraction logic to use `base::sub`, `base::trimws`, or functions from `stringr` for cleaner and more performant string manipulation, avoiding manual `strsplit`/`paste0` combinations. For example, instead of `trim(paste0(strsplit(line, '')[[1]][1:(index(line, '=') - 1)], collapse = ''))`, consider using a regex-based approach like `sub("^\\s*([^=]+)=.*$", "\\1", line)` for the key.
-2.  **Standardize Internal Trim**: Replace the custom `trim` function with `base::trimws(x, which = "both")`.
-3.  **Remove `.travis.yml`**: If Travis CI is no longer used, remove `.travis.yml` or add it to `.Rbuildignore`.
+## 🔧 Suggestions
+1. **Rename to snake_case** – Change `read.ini` → `read_ini`, `write.ini` → `write_ini`, and adjust internal variables accordingly (e.g., `section_regexp`, `key_value_regexp`, `ignore_regexp`, `trim_str`, `equal_pos`). Update the NAMESPACE and any internal calls.  
+2. **Replace `=` with `<-`** – For all non‑function‑call assignments.  
+3. **Standardise quotes** – Convert all single‑quoted strings to double‑quoted strings.  
+4. **Apply a formatting pipeline** – Run `styler::style_pkg()` or `formatR::tidy_dir()` to fix spacing, line length, and parentheses issues automatically.  
+5. **Switch to implicit return** – In `index()`, simply end with `equalPosition`.  
+6. **Replace `F` with `FALSE`** – In `readLines(..., warn = F)`.  
+7. **Add `.Rbuildignore`** – Include a line `^\\.travis\\.yml$` to prevent the hidden file from being bundled.  
+8. **Consider using existing parsers** – For robustness, one could delegate to a well‑tested INI parser (e.g., from the `config` package) and provide a thin wrapper; however, if the goal is to keep zero dependencies, the current implementation is acceptable after the style fixes.  
+9. **Add a NEWS.md** – Document changes per version (especially if you plan to submit to CRAN).  
 
-## 🚫 Red Flags
-1.  **No Critical Blockers**. The package appears functional and well-tested, despite the style and code structure issues.
+## 🚫 Red Flags / Blockers
+- **None** – No errors, warnings, or failing tests were reported. The two NOTEs are minor and easily addressed.  
 
-## Technical Details
+## 📋 Technical Details
+- **Session Info**  
+  - R version: 4.4.0 (2024‑04‑24)  
+  - OS: Ubuntu 22.04.4 LTS  
+  - Platform: x86_64‑pc‑linux‑gnu  
 
-### Session Info
-*   **R Version**: 4.4.0 (2024-04-24)
-*   **OS**: Ubuntu 22.04.4 LTS
-*   **System**: x86_64, linux-gnu
-*   **UI**: X11
-*   **Language**: (EN)
-*   **Collate**: C
-*   **Ctype**: en_US.UTF-8
-*   **Time Zone**: Etc/UTC
-*   **Date**: 2026-04-08
-*   **Pandoc**: 3.2 @ /usr/bin/pandoc
-*   **Quarto**: 1.4.555 @ /usr/local/bin/quarto
-*   **Packages**: `ini` (0.3.1), along with standard R packages.
+- **Installed Packages (relevant)**  
+  - `ini` 0.3.1 (local)  
 
-### Lints
-A total of **57 lints** were detected across `R/ini.R` (50 lints) and `tests/testthat/` (7 lints).
-**Top categories of lints include:**
-*   **`object_name_linter`**: 13 instances (Variable and function names should match snake_case).
-*   **`quotes_linter`**: 21 instances (Only use double-quotes).
-*   **`spaces_inside_linter`**: 13 instances (Do not place spaces after/before parentheses/square brackets).
-*   **`line_length_linter`**: 5 instances (Lines should not be more than 80 characters).
-*   **`assignment_linter`**: 1 instance (Use `<-` for assignment, not `=`).
-*   **`spaces_left_parentheses_linter`**: 2 instances (Place a space before left parenthesis, except in a function call).
-*   **`return_linter`**: 1 instance (Use implicit return behavior; explicit `return()` is not needed).
-*   **`T_and_F_symbol_linter`**: 1 instance (Use `FALSE` instead of `F`).
-*   **`infix_spaces_linter`**: 4 instances (Put spaces around all infix operators).
-*   **`trailing_whitespace_linter`**: 2 instances (Remove trailing whitespace).
+- **Lint Summary**  
+  - Total lint messages: >70 (majority are style: object_name_linter, assignment_linter, quotes_linter, spaces_*_linter, line_length_linter, T_and_F_symbol_linter, return_linter, trailing_whitespace_linter, infix_spaces_linter).  
 
-**Call to Action**: Address all linting issues for improved code readability and adherence to tidyverse style.
+- **Coverage**  
+  - `R/ini.R`: 97.73 % covered (missed lines are few edge‑cases in the parser).  
 
-### RCMD check
-The `devtools::check()` command completed with **2 NOTEs**:
-*   `NOTE: Found the following hidden files and directories: .travis.yml` - This file is often used for CI/CD and should either be removed if not in use or explicitly listed in `.Rbuildignore`.
-*   `NOTE: checking for future file timestamps` - This is typically a transient issue related to file synchronization or time zone differences during the build process and is not usually indicative of a problem with the package code itself.
+- **R CMD check**  
+  - Status: 2 NOTEs  
+    1. Hidden file `.travis.yml` (should be ignored).  
+    * Unable to verify current time (future file timestamps).  
+  - No ERRORS, no WARNINGS.  
 
-Overall, the check indicates a healthy package without any `ERROR` or `WARNING` statuses, which is a good sign.
+- **Tests**  
+  - `testthat.R` runs `test_check("ini")`.  
+  - Individual test files (`test-read.ini.R`, `test-write.ini.R`) exist but were not listed; they pass as part of the overall check.  
 
-### Code Coverage
-The code coverage for `R/ini.R` is **97.73%**. This is an excellent level of coverage, suggesting that nearly all lines of the R source code are exercised by the existing unit tests. This significantly contributes to the reliability of the package.
+- **Description** (inferred)  
+  - Package provides `read_ini()` and `write_ini()` functions for parsing and writing Windows‑style `.ini` configuration files.  
+  - No `Depends`, `Imports`, or `LinkingTo` fields (base R only).  
+  - License: likely GPL‑2 or GPL‑3 (not shown in the snippet).  
+
+---  
+
+**Overall assessment**: The `ini` package is functionally sound and well‑tested, but it requires a style overhaul to align with the tidyverse/linter conventions currently expected by the R community. Addressing the lint‑related issues and the minor NOTE about the hidden file will bring the package to a polished, submission‑ready state.

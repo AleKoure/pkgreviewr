@@ -29,18 +29,45 @@ pak::pak("AleKoure/pkgreviewr")
 
 ## Usage
 
-Set a Gemini API key in your environment, for example via
-`usethis::edit_r_environ()`, then restart R:
+`build_report()` no longer hardcodes a remote provider. You can either:
 
-```sh
-GEMINI_API_KEY={YOUR_API_KEY}
-```
+- pass `chat_fn`, a function with signature `(system_prompt, user_prompt)`
+- pass `chat`, an `ellmer` chat object inheriting from `Chat`
+- configure a local Ollama model via `PKGREVIEWR_OLLAMA_MODEL` or `OLLAMA_MODEL`
 
-Generate a report for a repository:
+Generate a report with a custom chat function:
 
 ```r
 library(pkgreviewr)
-build_report("https://github.com/dvdscripter/ini")
+
+my_chat_fn <- function(system_prompt, user_prompt) {
+  stop("Connect your preferred chat backend here")
+}
+
+build_report(
+  "https://github.com/dvdscripter/ini",
+  chat_fn = my_chat_fn
+)
+```
+
+Generate a report with an `ellmer` chat object:
+
+```r
+library(ellmer)
+library(pkgreviewr)
+
+chat <- chat_openai(model = "gpt-4.1-mini")
+
+build_report(
+  "https://github.com/dvdscripter/ini",
+  chat = chat
+)
+```
+
+Use a local Ollama backend by configuring a model name:
+
+```sh
+export PKGREVIEWR_OLLAMA_MODEL=llama3.2
 ```
 
 Collect structured review data without generating a report:
