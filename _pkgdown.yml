@@ -1,0 +1,49 @@
+template:
+  bootstrap: 5
+
+home:
+  title: pkgreviewr
+  description: Section-based QA reviews for R packages using deterministic signals and focused LLM prompts.
+  links:
+    - text: GitHub repository
+      href: https://github.com/AleKoure/pkgreviewr
+    - text: ellmer documentation
+      href: https://ellmer.tidyverse.org
+
+url: https://alekoure.github.io/pkgreviewr/
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, github]
+  components:
+    intro:
+      text: Get Started
+      href: index.html
+    articles:
+      text: Articles
+      menu:
+        - text: Advanced Usage
+          href: articles/advanced-usage.html
+    github:
+      icon: fa-github
+      aria-label: GitHub repository
+      href: https://github.com/AleKoure/pkgreviewr
+    news:
+      text: Changelog
+      href: news/index.html
+
+reference:
+  - title: Package
+    contents:
+      - pkgreviewr
+  - title: Main workflow
+    contents:
+      - build_report
+      - collect_review_data
+
+articles:
+  - title: Usage
+    navbar: Usage
+    contents:
+      - advanced-usage

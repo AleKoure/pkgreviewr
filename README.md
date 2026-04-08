@@ -1,3 +1,5 @@
+<img src="man/figures/hex-sticker.svg" align="right" alt="pkgreviewr hex sticker" width="220" />
+
 # pkgreviewr
 
 `pkgreviewr` reviews R packages with a section-based workflow. It gathers
@@ -10,6 +12,8 @@ The current stable user-facing entry points are:
 
 - `collect_review_data()` for deterministic signal collection
 - `build_report()` for end-to-end report generation
+
+Project website: <https://alekoure.github.io/pkgreviewr/>
 
 ## Installation
 

@@ -9,6 +9,8 @@ Description: Collects deterministic review signals for R packages, including
     generate section-based review reports with concise section summaries and a
     synthesized overall diagnostic.
 License: GPL-3
+URL: https://alekoure.github.io/pkgreviewr/, https://github.com/AleKoure/pkgreviewr
+BugReports: https://github.com/AleKoure/pkgreviewr/issues
 Encoding: UTF-8
 LazyData: true
 Imports:
@@ -22,9 +24,11 @@ Imports:
     withr
 Suggests:
     knitr,
+    pkgdown,
     rmarkdown,
     testthat (>= 3.0.0)
 VignetteBuilder: knitr
+Config/Needs/website: pkgdown
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
