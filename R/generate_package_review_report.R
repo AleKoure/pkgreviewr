@@ -169,19 +169,30 @@ generate_package_review_report <- function(code,
 # @param chat_fn Optional chat function with signature
 #   `(system_prompt, user_prompt)`.
 # @param chat Optional ellmer chat object inheriting from `Chat`.
+# @param parallel Whether to generate independent review sections in parallel
+#   when possible.
+# @param workers Number of workers to use when `parallel = TRUE`.
 #
 # @return Invisibly returns the generated report text.
 # @export
 build_report <- function(package_url,
                          output_path = "test_review.md",
                          chat_fn = NULL,
-                         chat = NULL) {
+                         chat = NULL,
+                         parallel = FALSE,
+                         workers = 1L) {
   chat_backend <- resolve_chat_backend(chat_fn = chat_fn, chat = chat)
-
-  code <- remote_package_report(package_url)
-  generate_package_review_report(
-    code = code,
-    path_to_report = output_path,
-    chat_fn = chat_backend
+  review_data <- collect_review_data(package_url)
+  section_results <- generate_review_sections(
+    review_data = review_data,
+    chat_fn = chat_backend,
+    parallel = parallel,
+    workers = workers
   )
+  synthesis_result <- synthesize_review_diagnostics(section_results, chat_backend)
+  report <- render_review_report(review_data, c(list(synthesis_result), section_results))
+
+  writeLines(report, output_path)
+  message("Review report written to: ", output_path)
+  invisible(report)
 }

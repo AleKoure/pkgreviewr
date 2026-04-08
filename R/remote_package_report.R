@@ -26,57 +26,125 @@ remote_package_report <- function(package_url) {
 collect_review_data <- function(package_url) {
   local_path <- withr::local_tempdir()
   git2r::clone(package_url, local_path = local_path)
-  rcmd_check <- get_rcmd_check(local_path)
+  sandbox <- create_diagnostic_sandbox()
+
+  install_package_dependencies(local_path, sandbox$library_path)
+  diagnostics <- collect_package_diagnostics(local_path, sandbox$library_path)
 
   build_review_data(
     package_ref = package_url,
     source_path = local_path,
-    package_code = rdocdump::rdd_extract_code(
-      local_path,
-      include_roxygen = TRUE,
-      include_tests = TRUE,
-      force_fetch = FALSE,
-      repos = c("CRAN" = "https://cran.r-project.org")
-    ),
-    coverage_report = get_coverage_report(local_path),
-    lint_report = get_lint_report(local_path),
-    rcmd_check_report = rcmd_check$stdout,
-    session_info = as.character(rcmd_check$session_info)
+    package_code = diagnostics$package_code,
+    coverage_report = diagnostics$coverage_report,
+    lint_report = diagnostics$lint_report,
+    rcmd_check_report = diagnostics$rcmd_check_report,
+    session_info = diagnostics$session_info
   )
 }
 
-# Internal coverage collector.
+# Internal sandbox descriptor for package diagnostics.
 #
-# @param path_to_package Path to the package source.
-#
-# @return Coverage output formatted for downstream review steps.
+# @return A list containing sandbox paths.
 # @keywords internal
 # @noRd
-get_coverage_report <- function(path_to_package) {
-  coverage_results <- covr::package_coverage(path = path_to_package, quiet = TRUE)
-  covr::coverage_to_list(coverage_results) |> dput()
+create_diagnostic_sandbox <- function() {
+  root_path <- tempfile("pkgreviewr-sandbox-")
+  dir.create(root_path, recursive = TRUE, showWarnings = FALSE)
+  library_path <- file.path(root_path, "library")
+  dir.create(library_path, recursive = TRUE, showWarnings = FALSE)
+
+  list(
+    root_path = root_path,
+    library_path = library_path
+  )
 }
 
-# Internal lint collector.
+# Internal sandboxed subprocess runner.
 #
 # @param path_to_package Path to the package source.
+# @param library_path Sandbox library path.
+# @param callback Serializable callback run inside the subprocess.
 #
-# @return Character vector of lints.
+# @return Result returned by `callback`.
 # @keywords internal
 # @noRd
-get_lint_report <- function(path_to_package) {
-  lints <- lintr::lint_package(path_to_package)
-  as.character(lints)
+run_in_callr_sandbox <- function(path_to_package, library_path, callback) {
+  if (!is.function(callback)) {
+    stop("`callback` must be a function.", call. = FALSE)
+  }
+
+  callr::r(
+    func = function(path_to_package, library_path, callback) {
+      withr::with_options(list(repos = c(CRAN = "https://cran.r-project.org")), {
+        withr::with_dir(path_to_package, {
+          withr::with_libpaths(new = library_path, action = "prefix", {
+            callback(path_to_package, library_path)
+          })
+        })
+      })
+    },
+    args = list(
+      path_to_package = path_to_package,
+      library_path = library_path,
+      callback = callback
+    )
+  )
 }
 
-# Internal `R CMD check` runner.
+# Internal dependency installer for downloaded packages.
 #
 # @param path_to_package Path to the package source.
+# @param library_path Sandbox library path.
 #
-# @return `devtools::check()` result.
+# @return Invisibly returns `TRUE` on success.
 # @keywords internal
 # @noRd
-get_rcmd_check <- function(path_to_package) {
-  result <- devtools::check(pkg = path_to_package)
-  result
+install_package_dependencies <- function(path_to_package, library_path) {
+  run_in_callr_sandbox(
+    path_to_package = path_to_package,
+    library_path = library_path,
+    callback = function(path_to_package, library_path) {
+      devtools::install_deps(
+        pkg = path_to_package,
+        dependencies = TRUE,
+        upgrade = "never",
+        quiet = TRUE
+      )
+
+      invisible(TRUE)
+    }
+  )
+}
+
+# Internal sandboxed diagnostic collector.
+#
+# @param path_to_package Path to the package source.
+# @param library_path Sandbox library path.
+#
+# @return A named list of collected diagnostic signals.
+# @keywords internal
+# @noRd
+collect_package_diagnostics <- function(path_to_package, library_path) {
+  run_in_callr_sandbox(
+    path_to_package = path_to_package,
+    library_path = library_path,
+    callback = function(path_to_package, library_path) {
+      coverage_results <- covr::package_coverage(path = path_to_package, quiet = TRUE)
+      rcmd_check <- devtools::check(pkg = path_to_package, error_on = "never")
+
+      list(
+        package_code = rdocdump::rdd_extract_code(
+          path_to_package,
+          include_roxygen = TRUE,
+          include_tests = TRUE,
+          force_fetch = FALSE,
+          repos = c("CRAN" = "https://cran.r-project.org")
+        ),
+        coverage_report = paste(capture.output(dput(covr::coverage_to_list(coverage_results))), collapse = "\n"),
+        lint_report = as.character(lintr::lint_package(path_to_package)),
+        rcmd_check_report = rcmd_check$stdout,
+        session_info = as.character(rcmd_check$session_info)
+      )
+    }
+  )
 }

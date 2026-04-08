@@ -29,6 +29,8 @@ pak::pak("AleKoure/pkgreviewr")
 
 ## Usage
 
+`build_report()` now generates independent review sections, each with a body and summary. This usually means more LLM calls, but each call is smaller and more focused. You can also opt into parallel section generation with `parallel = TRUE` on Unix-like systems.
+
 `build_report()` no longer hardcodes a remote provider. You can either:
 
 - pass `chat_fn`, a function with signature `(system_prompt, user_prompt)`
