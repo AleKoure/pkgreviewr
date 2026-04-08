@@ -127,3 +127,76 @@ test_that("refine_review_report falls back to the draft report on backend failur
 
   expect_identical(refined, draft_report)
 })
+
+
+test_that("normalize_final_report removes repeated top metadata and duplicate sections", {
+  report <- paste(
+    "# Audit report - ini",
+    "",
+    "Reviewed source: https://github.com/dvdscripter/ini",
+    "",
+    "> Preview: Top preview.",
+    "",
+    "# Audit report - ini",
+    "",
+    "## ✅ Strengths",
+    "- Short strength.",
+    "",
+    "## ✅ Strengths",
+    "",
+    "> Preview: Better strength.",
+    "",
+    "1. Detailed strength.",
+    "",
+    "## ⚠️ Improvements",
+    "",
+    "> Preview: Improvement preview.",
+    "",
+    "1. Detailed improvement.",
+    sep = "\n"
+  )
+
+  cleaned <- pkgreviewr:::normalize_final_report(report)
+  cleaned_lines <- strsplit(cleaned, "\n", fixed = TRUE)[[1]]
+
+  expect_identical(length(grep("^# Audit report - ", cleaned_lines)), 1L)
+  expect_identical(length(grep("^Reviewed source:", cleaned_lines)), 1L)
+  expect_identical(length(grep("^## ✅ Strengths$", cleaned_lines)), 1L)
+  expect_match(cleaned, "Better strength.", fixed = TRUE)
+  expect_match(cleaned, "Detailed strength.", fixed = TRUE)
+  expect_false(grepl("Short strength.", cleaned, fixed = TRUE))
+})
+
+test_that("normalize_final_report keeps fuller earlier sections when later duplicates are partial", {
+  report <- paste(
+    "# Audit report - ini",
+    "",
+    "Reviewed source: https://github.com/dvdscripter/ini",
+    "",
+    "> Preview: Top preview.",
+    "",
+    "## 🚫 Red Flags",
+    "",
+    "> Preview: No blockers.",
+    "",
+    "1. No major blockers identified.",
+    "",
+    "## Technical Details",
+    "",
+    "> Preview: Technical details preview.",
+    "",
+    "1. Coverage is high.",
+    "",
+    "# Audit report - ini",
+    "",
+    "## 🚫 Red Flags",
+    "No red flags identified.",
+    sep = "\n"
+  )
+
+  cleaned <- pkgreviewr:::normalize_final_report(report)
+
+  expect_match(cleaned, "1. No major blockers identified.", fixed = TRUE)
+  expect_match(cleaned, "## Technical Details", fixed = TRUE)
+  expect_match(cleaned, "1. Coverage is high.", fixed = TRUE)
+})

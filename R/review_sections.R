@@ -247,9 +247,7 @@ build_section_system_prompt <- function(section_context, section_spec) {
     "<markdown body for the section only>",
     "The summary must be concise and suitable for a preview and later synthesis.",
     paste("Focus only on the section named:", section_context$title),
-    sep = "
-
-"
+    sep = "\n\n"
   )
 }
 
