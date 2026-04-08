@@ -103,14 +103,14 @@ test_that("generate_package_review_report uses a supplied chat object", {
 
 test_that("refine_review_report uses the package review prompt and returns refined output", {
   refined <- pkgreviewr:::refine_review_report(
-    report = "# Audit report - pkg\n\n## ✅ Strengths\n1. Strong API.",
+    report = "# Audit report - pkg\n\n## Strengths\n1. Strong API.",
     chat_fn = function(system_prompt, user_prompt) {
       expect_match(system_prompt, "AI Review Prompt for R Packages", fixed = TRUE)
       expect_match(system_prompt, "Return only the final markdown report.", fixed = TRUE)
-      expect_match(system_prompt, "## ✅ Strengths", fixed = TRUE)
+      expect_match(system_prompt, "## Strengths", fixed = TRUE)
       expect_match(system_prompt, "Beautify the report in the gluing layer", fixed = TRUE)
       expect_match(user_prompt, "# Audit report - pkg", fixed = TRUE)
-      "# Audit report - pkg\n\n## ✅ Strengths\n1. Refined strength."
+      "# Audit report - pkg\n\n## Strengths\n1. Refined strength."
     }
   )
 
@@ -118,7 +118,7 @@ test_that("refine_review_report uses the package review prompt and returns refin
 })
 
 test_that("refine_review_report falls back to the draft report on backend failure", {
-  draft_report <- "# Audit report - pkg\n\n## ✅ Strengths\n1. Strong API."
+  draft_report <- "# Audit report - pkg\n\n## Strengths\n1. Strong API."
 
   refined <- pkgreviewr:::refine_review_report(
     report = draft_report,
@@ -139,16 +139,16 @@ test_that("normalize_final_report removes repeated top metadata and duplicate se
     "",
     "# Audit report - ini",
     "",
-    "## ✅ Strengths",
+    "## Strengths",
     "- Short strength.",
     "",
-    "## ✅ Strengths",
+    "## Strengths",
     "",
     "> Preview: Better strength.",
     "",
     "1. Detailed strength.",
     "",
-    "## ⚠️ Improvements",
+    "## Improvements",
     "",
     "> Preview: Improvement preview.",
     "",
@@ -161,7 +161,7 @@ test_that("normalize_final_report removes repeated top metadata and duplicate se
 
   expect_identical(length(grep("^# Audit report - ", cleaned_lines)), 1L)
   expect_identical(length(grep("^Reviewed source:", cleaned_lines)), 1L)
-  expect_identical(length(grep("^## ✅ Strengths$", cleaned_lines)), 1L)
+  expect_identical(length(grep("^## Strengths$", cleaned_lines)), 1L)
   expect_match(cleaned, "Better strength.", fixed = TRUE)
   expect_match(cleaned, "Detailed strength.", fixed = TRUE)
   expect_false(grepl("Short strength.", cleaned, fixed = TRUE))
@@ -175,7 +175,7 @@ test_that("normalize_final_report keeps fuller earlier sections when later dupli
     "",
     "> Preview: Top preview.",
     "",
-    "## 🚫 Red Flags",
+    "## Red Flags",
     "",
     "> Preview: No blockers.",
     "",
@@ -189,7 +189,7 @@ test_that("normalize_final_report keeps fuller earlier sections when later dupli
     "",
     "# Audit report - ini",
     "",
-    "## 🚫 Red Flags",
+    "## Red Flags",
     "No red flags identified.",
     sep = "\n"
   )

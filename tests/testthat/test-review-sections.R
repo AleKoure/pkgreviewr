@@ -98,7 +98,7 @@ test_that("render_review_report renders section summaries and warnings", {
   section_results <- list(
     pkgreviewr:::new_section_result(
       section_id = "strengths",
-      title = "✅ Strengths",
+      title = "Strengths",
       body = "Detailed markdown body.",
       summary = "Concise section summary.",
       evidence_used = c("package_code"),
@@ -110,7 +110,7 @@ test_that("render_review_report renders section summaries and warnings", {
 
   expect_match(rendered, "# Audit report", fixed = TRUE)
   expect_match(rendered, "> Preview: Concise section summary.", fixed = TRUE)
-  expect_match(rendered, "## ✅ Strengths", fixed = TRUE)
+  expect_match(rendered, "## Strengths", fixed = TRUE)
 })
 
 
@@ -156,7 +156,7 @@ test_that("build_synthesis_prompt uses only section summaries", {
   section_results <- list(
     pkgreviewr:::new_section_result(
       section_id = "strengths",
-      title = "✅ Strengths",
+      title = "Strengths",
       body = "Detailed package body.",
       summary = "Package summary text.",
       evidence_used = c("package_code"),
@@ -164,7 +164,7 @@ test_that("build_synthesis_prompt uses only section summaries", {
     ),
     pkgreviewr:::new_section_result(
       section_id = "improvements",
-      title = "⚠️ Improvements",
+      title = "Improvements",
       body = "Detailed actions body.",
       summary = "Action summary text.",
       evidence_used = c("lint_report"),
@@ -183,7 +183,7 @@ test_that("synthesize_review_diagnostics returns a synthesis section", {
   section_results <- list(
     pkgreviewr:::new_section_result(
       section_id = "strengths",
-      title = "✅ Strengths",
+      title = "Strengths",
       body = "Detailed package body.",
       summary = "Package summary text.",
       evidence_used = c("package_code"),
@@ -213,7 +213,7 @@ test_that("synthesize_review_diagnostics degrades gracefully on backend failure"
   section_results <- list(
     pkgreviewr:::new_section_result(
       section_id = "strengths",
-      title = "✅ Strengths",
+      title = "Strengths",
       body = "Detailed package body.",
       summary = "Package summary text.",
       evidence_used = c("package_code"),
@@ -250,7 +250,7 @@ test_that("render_review_report places synthesis as top preview", {
     ),
     pkgreviewr:::new_section_result(
       section_id = "strengths",
-      title = "✅ Strengths",
+      title = "Strengths",
       body = "1. Strong API design.",
       summary = "Strong API design.",
       evidence_used = c("package_code"),
@@ -261,14 +261,14 @@ test_that("render_review_report places synthesis as top preview", {
   rendered <- pkgreviewr:::render_review_report(review_data, section_results)
 
   expect_match(rendered, "> Preview: Short overview summary.", fixed = TRUE)
-  expect_match(rendered, "## ✅ Strengths", fixed = TRUE)
+  expect_match(rendered, "## Strengths", fixed = TRUE)
 })
 
 
 test_that("build_section_system_prompt includes review guide context and section template", {
   section_context <- pkgreviewr:::new_section_context(
     section_id = "strengths",
-    title = "✅ Strengths",
+    title = "Strengths",
     focus = "Focus text.",
     evidence_blocks = list(package_code = "## Package Code\nf <- function() TRUE"),
     evidence_used = c("package_code")
@@ -278,16 +278,16 @@ test_that("build_section_system_prompt includes review guide context and section
   system_prompt <- pkgreviewr:::build_section_system_prompt(section_context, section_spec)
 
   expect_match(system_prompt, "AI Review Prompt for R Packages", fixed = TRUE)
-  expect_match(system_prompt, "Section directive: ✅ Strengths", fixed = TRUE)
+  expect_match(system_prompt, "Section directive: Strengths", fixed = TRUE)
   expect_match(system_prompt, "Mozilla review principles", fixed = TRUE)
   expect_match(system_prompt, "rOpenSci package expectations", fixed = TRUE)
-  expect_match(system_prompt, "Focus only on the section named: ✅ Strengths", fixed = TRUE)
+  expect_match(system_prompt, "Focus only on the section named: Strengths", fixed = TRUE)
 })
 
 test_that("render_review_section uses preview format without internal scaffolding", {
   section_result <- pkgreviewr:::new_section_result(
     section_id = "strengths",
-    title = "✅ Strengths",
+    title = "Strengths",
     body = "1. Clear API surface.",
     summary = "Clear API surface.",
     evidence_used = c("package_code"),
@@ -364,7 +364,7 @@ test_that("render_review_report omits failed sections and shows one note", {
     ),
     pkgreviewr:::new_section_result(
       section_id = "strengths",
-      title = "✅ Strengths",
+      title = "Strengths",
       body = "1. Strong API design.",
       summary = "Strong API design.",
       evidence_used = c("package_code"),
@@ -373,9 +373,9 @@ test_that("render_review_report omits failed sections and shows one note", {
     ),
     pkgreviewr:::new_section_result(
       section_id = "improvements",
-      title = "⚠️ Improvements",
+      title = "Improvements",
       body = "This section could not be generated from the available diagnostics.",
-      summary = "Section unavailable: ⚠️ Improvements",
+      summary = "Section unavailable: Improvements",
       evidence_used = c("lint_report"),
       warnings = "backend unavailable",
       trace = list(status = "failed", attempts = list(list(attempt = 1L, status = "backend_error", error = "backend unavailable")), final_error = "backend unavailable")
@@ -384,9 +384,9 @@ test_that("render_review_report omits failed sections and shows one note", {
 
   rendered <- pkgreviewr:::render_review_report(review_data, section_results)
 
-  expect_match(rendered, "Note: Omitted sections due to generation failures: ⚠️ Improvements", fixed = TRUE)
-  expect_false(grepl("## ⚠️ Improvements", rendered, fixed = TRUE))
-  expect_match(rendered, "## ✅ Strengths", fixed = TRUE)
+  expect_match(rendered, "Note: Omitted sections due to generation failures: Improvements", fixed = TRUE)
+  expect_false(grepl("## Improvements", rendered, fixed = TRUE))
+  expect_match(rendered, "## Strengths", fixed = TRUE)
 })
 
 test_that("report_section_traces exposes failed section errors", {
@@ -396,7 +396,7 @@ test_that("report_section_traces exposes failed section errors", {
     section_traces = list(
       improvements = list(
         section_id = "improvements",
-        title = "⚠️ Improvements",
+        title = "Improvements",
         status = "failed",
         attempts = list(list(attempt = 1L, status = "backend_error", error = "backend unavailable")),
         final_error = "backend unavailable"

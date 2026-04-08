@@ -114,16 +114,16 @@ resolve_chat_backend <- function(chat_fn = NULL, chat = NULL) {
 # @keywords internal
 # @noRd
 get_package_review_prompt_path <- function() {
-  installed_path <- system.file("package_review_prompt.md", package = "pkgreviewr")
-
-  if (nzchar(installed_path)) {
-    return(installed_path)
-  }
-
   source_path <- file.path("inst", "package_review_prompt.md")
 
   if (file.exists(source_path)) {
     return(source_path)
+  }
+
+  installed_path <- system.file("package_review_prompt.md", package = "pkgreviewr")
+
+  if (nzchar(installed_path)) {
+    return(installed_path)
   }
 
   stop("Could not find `package_review_prompt.md`.", call. = FALSE)
@@ -244,7 +244,7 @@ persist_review_artifacts <- function(artifact_dir,
   write_text_artifact(file.path(artifact_dir, "draft-report.md"), draft_report)
   write_text_artifact(file.path(artifact_dir, "final-report.md"), final_report)
 
-  section_results_by_id <- setNames(
+  section_results_by_id <- stats::setNames(
     validated_sections,
     vapply(validated_sections, function(section_result) section_result$section_id, character(1))
   )
@@ -325,10 +325,10 @@ build_final_refinement_prompt <- function() {
     "Optional single-line omission note when sections were skipped.",
     "> Preview: <overall assessment preview>",
     "<overall assessment body>",
-    "## ✅ Strengths",
-    "## ⚠️ Improvements",
-    "## 🔧 Suggestions",
-    "## 🚫 Red Flags",
+    "## Strengths",
+    "## Improvements",
+    "## Suggestions",
+    "## Red Flags",
     "## Technical Details",
     "Preserve existing section order when present and do not add new sections.",
     "Do not invent evidence, add policy commentary, or mention hidden processing steps.",
@@ -398,10 +398,10 @@ normalize_final_report <- function(report_text) {
   header_line <- grep("^# Audit report - ", lines)
   source_line <- grep("^Reviewed source:", lines)
   section_titles <- c(
-    "## ✅ Strengths",
-    "## ⚠️ Improvements",
-    "## 🔧 Suggestions",
-    "## 🚫 Red Flags",
+    "## Strengths",
+    "## Improvements",
+    "## Suggestions",
+    "## Red Flags",
     "## Technical Details"
   )
   section_start <- which(lines %in% section_titles)
@@ -421,8 +421,8 @@ normalize_final_report <- function(report_text) {
   }
 
   preamble <- lines[seq_len(section_start[[1]] - 1L)]
-  section_blocks <- setNames(vector("list", length(section_titles)), section_titles)
-  section_scores <- setNames(rep(-Inf, length(section_titles)), section_titles)
+  section_blocks <- stats::setNames(vector("list", length(section_titles)), section_titles)
+  section_scores <- stats::setNames(rep(-Inf, length(section_titles)), section_titles)
 
   for (index in seq_along(section_start)) {
     start_line <- section_start[[index]]
@@ -473,25 +473,54 @@ report_section_traces <- function(report, section_id = NULL) {
   traces[[section_id]]
 }
 
-# Build a package review report.
-#
-# `build_report()` is the current end-user entry point. It collects package
-# review data, generates a review with the configured LLM prompt, and writes
-# the report to disk.
-#
-# @param package_url Repository URL to review.
-# @param output_path Output path for the generated review report.
-# @param chat_fn Optional chat function with signature
-#   `(system_prompt, user_prompt)`.
-# @param chat Optional ellmer chat object inheriting from `Chat`.
-# @param parallel Whether to generate independent review sections in parallel
-#   when possible.
-# @param workers Number of workers to use when `parallel = TRUE`.
-# @param artifact_dir Optional directory for persisted prompts, traces, and
-#   intermediate report artifacts.
-#
-# @return Invisibly returns the generated report text.
-# @export
+#' Build a package review report.
+#'
+#' `build_report()` is the main end-user entry point. It collects deterministic
+#' package diagnostics, generates report sections independently, synthesizes an
+#' overall assessment from section summaries, optionally persists intermediate
+#' artifacts, and writes the final markdown report to disk.
+#'
+#' Supply exactly one backend source with `chat_fn` or `chat`, or configure a
+#' local Ollama model via `PKGREVIEWR_OLLAMA_MODEL` or `OLLAMA_MODEL`.
+#' See the `ellmer` package documentation for provider-specific chat object
+#' constructors such as `ellmer::chat_openai()`.
+#'
+#' @param package_url Repository URL to review.
+#' @param output_path Output path for the generated markdown report.
+#' @param chat_fn Optional chat function with signature
+#'   `(system_prompt, user_prompt)`.
+#' @param chat Optional `ellmer` chat object inheriting from `Chat`.
+#' @param parallel Whether to generate independent review sections in parallel
+#'   when possible.
+#' @param workers Number of workers to use when `parallel = TRUE`.
+#' @param artifact_dir Optional directory for persisted prompts, traces,
+#'   section context, and intermediate reports.
+#'
+#' @return Invisibly returns a `pkgreviewr_report` character vector with
+#'   attached draft report, section results, section traces, artifact path, and
+#'   provenance metadata.
+#' @examples
+#' \dontrun{
+#' my_chat_fn <- function(system_prompt, user_prompt) {
+#'   stop("Connect your preferred chat backend here")
+#' }
+#'
+#' report <- build_report(
+#'   "https://github.com/dvdscripter/ini",
+#'   chat_fn = my_chat_fn,
+#'   artifact_dir = tempfile("pkgreviewr-artifacts-")
+#' )
+#'
+#' chat <- ellmer::chat_openai(model = "gpt-4.1-mini")
+#'
+#' build_report(
+#'   "https://github.com/dvdscripter/ini",
+#'   chat = chat,
+#'   parallel = TRUE,
+#'   workers = 2L
+#' )
+#' }
+#' @export
 build_report <- function(package_url,
                          output_path = "test_review.md",
                          chat_fn = NULL,

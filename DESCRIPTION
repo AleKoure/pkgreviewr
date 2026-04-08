@@ -6,9 +6,9 @@ Author: Who wrote it
 Maintainer: The package maintainer <yourself@somewhere.net>
 Description: Collects deterministic review signals for R packages, including
     check, lint, coverage, and extracted source context, then uses an LLM to
-    draft package review reports. The package is being refactored toward a
-    section-based review pipeline with explicit internal contracts.
-License: What license is it under?
+    generate section-based review reports with concise section summaries and a
+    synthesized overall diagnostic.
+License: GPL-3
 Encoding: UTF-8
 LazyData: true
 Imports:
@@ -21,6 +21,10 @@ Imports:
     rdocdump,
     withr
 Suggests:
+    knitr,
+    rmarkdown,
     testthat (>= 3.0.0)
+VignetteBuilder: knitr
 Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3

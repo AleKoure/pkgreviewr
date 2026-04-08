@@ -1,25 +1,15 @@
 # pkgreviewr
 
-`pkgreviewr` reviews R packages by collecting deterministic QA signals and using
-an LLM to draft a package review report.
+`pkgreviewr` reviews R packages with a section-based workflow. It gathers
+deterministic QA signals locally, builds targeted context for each review
+section, asks an LLM for concise section outputs, synthesizes an overall
+diagnostic from section summaries, and can persist intermediate artifacts for
+debugging.
 
-The current implementation does this in two stages:
+The current stable user-facing entry points are:
 
-- `collect_review_data()` acquires a repository and gathers local review
-  signals.
-- `build_report()` formats those signals into the current prompt workflow and
-  writes the generated report to disk.
-
-Collected signals currently include:
-
-- `devtools::check()` output
-- `lintr::lint_package()` output
-- `covr::package_coverage()` output
-- package source extracted with `rdocdump`
-
-The package is being refactored toward a section-based review architecture.
-Today, `build_report()` remains the stable end-to-end entry point, while lower
-level helpers stay internal.
+- `collect_review_data()` for deterministic signal collection
+- `build_report()` for end-to-end report generation
 
 ## Installation
 
@@ -27,17 +17,10 @@ level helpers stay internal.
 pak::pak("AleKoure/pkgreviewr")
 ```
 
-## Usage
+## Quick Start
 
-`build_report()` now generates independent review sections, each with a body and summary. This usually means more LLM calls, but each call is smaller and more focused. You can also opt into parallel section generation with `parallel = TRUE` on Unix-like systems.
-
-`build_report()` no longer hardcodes a remote provider. You can either:
-
-- pass `chat_fn`, a function with signature `(system_prompt, user_prompt)`
-- pass `chat`, an `ellmer` chat object inheriting from `Chat`
-- configure a local Ollama model via `PKGREVIEWR_OLLAMA_MODEL` or `OLLAMA_MODEL`
-
-Generate a report with a custom chat function:
+Use a custom backend function when you want to manage provider integration
+yourself:
 
 ```r
 library(pkgreviewr)
@@ -52,7 +35,9 @@ build_report(
 )
 ```
 
-Generate a report with an `ellmer` chat object:
+Use an `ellmer` chat object when you want a ready-made provider client. The
+`ellmer` reference for constructing chat objects is at
+<https://ellmer.tidyverse.org>.
 
 ```r
 library(ellmer)
@@ -66,17 +51,54 @@ build_report(
 )
 ```
 
-Use a local Ollama backend by configuring a model name:
+Use a local Ollama backend by setting a model name before calling
+`build_report()`:
 
 ```sh
 export PKGREVIEWR_OLLAMA_MODEL=llama3.2
 ```
 
-Collect structured review data without generating a report:
+## What `build_report()` Does
+
+`build_report()` currently:
+
+- clones the target package repository
+- installs dependencies into an isolated library path
+- runs local QA collection in a subprocess
+- generates review sections independently
+- stores a concise summary for each section
+- synthesizes an overall assessment from section summaries
+- optionally writes prompts, traces, and reports to `artifact_dir`
+
+The returned object is a `pkgreviewr_report` character vector with attributes
+for draft output, section results, traces, provenance, and persisted artifact
+location.
+
+## Collecting Data Only
+
+Inspect deterministic evidence without generating a report:
 
 ```r
 library(pkgreviewr)
+
 review_data <- collect_review_data("https://github.com/dvdscripter/ini")
 ```
 
-- [Example report generated for `ini`](./test_review.md)
+Collected signals currently include:
+
+- `devtools::check()` output
+- `lintr::lint_package()` output
+- `covr::package_coverage()` output
+- extracted package code from `rdocdump`
+- recorded session information
+
+## Advanced Usage
+
+For advanced backend setup, parallel section generation, and artifact
+persistence, see the vignette:
+
+```r
+vignette("advanced-usage", package = "pkgreviewr")
+```
+
+An example generated report is available at [test_review.md](./test_review.md).

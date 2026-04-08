@@ -13,16 +13,23 @@ remote_package_report <- function(package_url) {
   format_review_data(review_data)
 }
 
-# Collect deterministic review data for a package repository.
-#
-# This is the current structured collection entry point. It acquires the
-# package source, runs local QA tooling, and returns a validated internal data
-# object that later report steps can consume.
-#
-# @param package_url Repository URL to review.
-#
-# @return A `pkgreviewr_review_data` object.
-# @export
+#' Collect deterministic review data for a package repository.
+#'
+#' `collect_review_data()` clones a package repository, installs its
+#' dependencies in an isolated library, runs local QA tooling in a subprocess,
+#' and returns the structured signals used by the section-based review pipeline.
+#' This is useful when you want to inspect the deterministic evidence before
+#' running any LLM-backed report generation.
+#'
+#' @param package_url Repository URL to review.
+#'
+#' @return A `pkgreviewr_review_data` object containing the package reference,
+#'   local source path, collected signals, and metadata.
+#' @examples
+#' \dontrun{
+#' review_data <- collect_review_data("https://github.com/dvdscripter/ini")
+#' }
+#' @export
 collect_review_data <- function(package_url) {
   local_path <- withr::local_tempdir()
   git2r::clone(package_url, local_path = local_path)
@@ -140,7 +147,10 @@ collect_package_diagnostics <- function(path_to_package, library_path) {
           force_fetch = FALSE,
           repos = c("CRAN" = "https://cran.r-project.org")
         ),
-        coverage_report = paste(capture.output(dput(covr::coverage_to_list(coverage_results))), collapse = "\n"),
+        coverage_report = paste(
+          utils::capture.output(dput(covr::coverage_to_list(coverage_results))),
+          collapse = "\n"
+        ),
         lint_report = as.character(lintr::lint_package(path_to_package)),
         rcmd_check_report = rcmd_check$stdout,
         session_info = as.character(rcmd_check$session_info)

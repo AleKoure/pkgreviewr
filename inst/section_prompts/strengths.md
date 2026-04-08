@@ -1,4 +1,4 @@
-Section directive: ✅ Strengths
+Section directive: Strengths
 
 Focus on the strongest aspects of the package in structure, documentation, tests, design, and usability.
 Prefer concrete positives tied to the evidence.

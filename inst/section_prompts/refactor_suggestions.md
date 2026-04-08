@@ -1,4 +1,4 @@
-Section directive: 🔧 Suggestions
+Section directive: Suggestions
 
 Suggest pragmatic refactors or cleanups that improve maintainability, clarity, and package design.
 Avoid speculative rewrites or overengineering.

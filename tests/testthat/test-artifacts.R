@@ -29,14 +29,14 @@ test_that("persist_review_artifacts writes prompts, traces, and reports when req
 
   strengths_result <- pkgreviewr:::new_section_result(
     section_id = "strengths",
-    title = "✅ Strengths",
+    title = "Strengths",
     body = "1. Clear API surface.",
     summary = "Clear API surface.",
     evidence_used = c("package_code"),
     warnings = character(),
     trace = list(
       section_id = "strengths",
-      title = "✅ Strengths",
+      title = "Strengths",
       status = "success",
       attempts = list(list(attempt = 1L, status = "success", error = NULL)),
       final_error = NULL
@@ -97,7 +97,7 @@ test_that("persist_review_artifacts writes prompts, traces, and reports when req
   )
   expect_match(
     paste(readLines(file.path(artifact_dir, "sections", "strengths", "system-prompt.txt")), collapse = "\n"),
-    "Section directive: ✅ Strengths",
+    "Section directive: Strengths",
     fixed = TRUE
   )
   expect_match(

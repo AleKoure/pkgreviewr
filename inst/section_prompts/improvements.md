@@ -1,4 +1,4 @@
-Section directive: ⚠️ Improvements
+Section directive: Improvements
 
 List the most important quality gaps, missing package components, or weak spots.
 Tie each point to clear evidence and frame it as an improvement priority.

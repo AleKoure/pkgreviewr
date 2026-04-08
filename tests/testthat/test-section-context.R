@@ -1,7 +1,7 @@
 test_that("new_section_context returns a validated section_context object", {
   section_context <- pkgreviewr:::new_section_context(
     section_id = "strengths",
-    title = "✅ Strengths",
+    title = "Strengths",
     focus = "Focus text.",
     evidence_blocks = list(package_code = "## Package Code
 code"),
@@ -16,7 +16,7 @@ code"),
 test_that("validate_section_context requires character evidence identifiers", {
   section_context <- list(
     section_id = "strengths",
-    title = "✅ Strengths",
+    title = "Strengths",
     focus = "Focus text.",
     evidence_blocks = list(package_code = "## Package Code
 code"),

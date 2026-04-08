@@ -7,7 +7,7 @@ get_review_section_specs <- function() {
   list(
     strengths = list(
       section_id = "strengths",
-      title = "✅ Strengths",
+      title = "Strengths",
       focus = paste(
         "Identify the package's clearest strengths in structure, design,",
         "documentation, testing, and usability. Prefer concrete positives over vague praise."
@@ -21,7 +21,7 @@ get_review_section_specs <- function() {
     ),
     improvements = list(
       section_id = "improvements",
-      title = "⚠️ Improvements",
+      title = "Improvements",
       focus = paste(
         "List the most important quality gaps and missing pieces.",
         "Emphasize concrete improvements based on the package review guides."
@@ -36,7 +36,7 @@ get_review_section_specs <- function() {
     ),
     refactor_suggestions = list(
       section_id = "refactor_suggestions",
-      title = "🔧 Suggestions",
+      title = "Suggestions",
       focus = paste(
         "Suggest practical refactors or cleanup steps that would improve maintainability,",
         "clarity, and package design without overengineering the solution."
@@ -50,7 +50,7 @@ get_review_section_specs <- function() {
     ),
     red_flags = list(
       section_id = "red_flags",
-      title = "🚫 Red Flags",
+      title = "Red Flags",
       focus = paste(
         "Identify blockers, correctness risks, release risks, or serious weaknesses.",
         "If there are no major blockers, say so explicitly."
@@ -187,16 +187,16 @@ read_review_guide_prompt <- function() {
 # @keywords internal
 # @noRd
 get_section_prompt_template_path <- function(template_name) {
-  installed_path <- system.file(file.path("section_prompts", template_name), package = "pkgreviewr")
-
-  if (nzchar(installed_path)) {
-    return(installed_path)
-  }
-
   source_path <- file.path("inst", "section_prompts", template_name)
 
   if (file.exists(source_path)) {
     return(source_path)
+  }
+
+  installed_path <- system.file(file.path("section_prompts", template_name), package = "pkgreviewr")
+
+  if (nzchar(installed_path)) {
+    return(installed_path)
   }
 
   stop(sprintf("Could not find section prompt template '%s'.", template_name), call. = FALSE)

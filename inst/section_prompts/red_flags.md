@@ -1,4 +1,4 @@
-Section directive: 🚫 Red Flags
+Section directive: Red Flags
 
 Identify blockers, correctness risks, release risks, or serious weaknesses.
 Prioritize issues that would matter in an open-source review context: failing diagnostics, missing tests around critical paths, misleading documentation, broken package structure, or APIs likely to surprise users.
