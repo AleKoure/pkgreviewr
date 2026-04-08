@@ -1,0 +1,9 @@
+pandoc: 3.1.11
+pkgdown: 2.2.0
+pkgdown_sha: ~
+articles:
+  advanced-usage: advanced-usage.html
+last_built: 2026-04-08T16:56Z
+urls:
+  reference: https://alekoure.github.io/pkgreviewr/reference
+  article: https://alekoure.github.io/pkgreviewr/articles

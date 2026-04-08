@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1385" role="img" aria-labelledby="title desc">
+  <title id="title">pkgreviewr hex sticker</title>
+  <desc id="desc">A hex sticker showing a sectioned audit report, magnifying glass, and R package review motif.</desc>
+  <defs>
+    <linearGradient id="hexFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#eff4ef"/>
+      <stop offset="100%" stop-color="#dbe8d7"/>
+    </linearGradient>
+    <linearGradient id="reportFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#eef2f5"/>
+    </linearGradient>
+    <linearGradient id="glassFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2a5b84"/>
+      <stop offset="100%" stop-color="#173853"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="20" stdDeviation="24" flood-color="#24435a" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <polygon
+    points="600,35 1068,305 1068,845 600,1115 132,845 132,305"
+    fill="url(#hexFill)"
+    stroke="#18344b"
+    stroke-width="42"
+    stroke-linejoin="round"
+  />
+
+  <polygon
+    points="600,110 1004,343 1004,807 600,1040 196,807 196,343"
+    fill="#f8faf7"
+    opacity="0.62"
+  />
+
+  <g filter="url(#shadow)">
+    <rect x="255" y="235" width="540" height="670" rx="44" fill="url(#reportFill)" stroke="#214764" stroke-width="20"/>
+    <rect x="255" y="235" width="540" height="126" rx="44" fill="#214764"/>
+    <text x="525" y="315" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="700" text-anchor="middle" fill="#f7fafc">pkgreviewr</text>
+
+    <rect x="305" y="405" width="430" height="92" rx="22" fill="#eef2f4"/>
+    <rect x="305" y="523" width="430" height="92" rx="22" fill="#eef2f4"/>
+    <rect x="305" y="641" width="430" height="92" rx="22" fill="#eef2f4"/>
+    <rect x="305" y="759" width="430" height="76" rx="20" fill="#eef2f4"/>
+
+    <rect x="305" y="405" width="28" height="92" rx="14" fill="#2f845f"/>
+    <rect x="305" y="523" width="28" height="92" rx="14" fill="#ca8e2a"/>
+    <rect x="305" y="641" width="28" height="92" rx="14" fill="#a0523d"/>
+    <rect x="305" y="759" width="28" height="76" rx="14" fill="#386e94"/>
+
+    <text x="360" y="462" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="700" fill="#173853">Strengths</text>
+    <text x="360" y="580" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="700" fill="#173853">Improvements</text>
+    <text x="360" y="698" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="700" fill="#173853">Suggestions</text>
+    <text x="360" y="810" font-family="Arial, Helvetica, sans-serif" font-size="36" font-weight="700" fill="#173853">Diagnostics</text>
+  </g>
+
+  <g transform="translate(760 740) rotate(-14)">
+    <circle cx="0" cy="0" r="182" fill="#d7ebf6" stroke="#18344b" stroke-width="30"/>
+    <circle cx="0" cy="0" r="128" fill="#eff7fb" opacity="0.92"/>
+    <path d="M 122 122 L 286 286" fill="none" stroke="url(#glassFill)" stroke-width="58" stroke-linecap="round"/>
+    <path d="M -44 -50 C -11 -96 64 -88 96 -28 C 114 14 101 68 61 94 C 12 126 -58 110 -90 64" fill="none" stroke="#2f5d8a" stroke-width="26" stroke-linecap="round"/>
+    <text x="0" y="32" font-family="Georgia, Times New Roman, serif" font-size="162" font-style="italic" font-weight="700" text-anchor="middle" fill="#1f4f74">R</text>
+  </g>
+
+  </svg>
